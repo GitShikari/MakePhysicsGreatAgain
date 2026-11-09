@@ -1,0 +1,1537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  html,body{margin:0}
+  body{font:14px system-ui,-apple-system,sans-serif}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>Rigid Body in Motion</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&family=Spline+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a fixed chapter rail on the left; one section on screen at a time, each pairing a live 3D view with the equation that view generates. Palette = the vector colour code, so a term in a formula is the colour of its arrow. */
+:root{
+  --bg:#F1F2F7; --surface:#FFFFFF; --surface-2:#E7E9F0; --surface-3:#DCDFE9;
+  --fg:#14161D; --fg-2:#545A69; --fg-3:#838A9A;
+  --line:#D3D7E2; --line-soft:#E3E6EE;
+  --omega:#A96E05; --rvec:#0C7A68; --vvec:#2A4FC8; --lvec:#96298A; --tau:#BC2033;
+  --ok:#14785C; --warn:#9E6300;
+  --shadow:0 1px 2px rgba(20,22,29,.06), 0 8px 24px -12px rgba(20,22,29,.18);
+  --font-display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --font-body:'Spline Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-math:'Crimson Pro',Georgia,'Times New Roman',serif;
+  --font-data:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --rail:252px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--surface)}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100%}
+.rail{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;height:calc(100vh - env(safe-area-inset-top,0px));overflow-y:auto;background:var(--surface);border-right:1px solid var(--line);
+  padding-block:22px 28px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:14px;display:flex;flex-direction:column;gap:18px}
+.rail-head{display:flex;flex-direction:column;gap:3px}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.rail-title{font-family:var(--font-display);font-weight:800;font-size:20px;line-height:1.15;letter-spacing:-.015em;text-wrap:balance}
+nav ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.nav-link{display:grid;grid-template-columns:22px 1fr;gap:9px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:7px 9px;cursor:pointer;color:var(--fg-2);font-family:inherit;font-size:13.5px;line-height:1.3}
+.nav-link .n{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);font-variant-numeric:tabular-nums}
+.nav-link:hover{background:var(--surface-2);color:var(--fg)}
+.nav-link[aria-current="true"]{background:var(--surface-2);color:var(--fg);font-weight:600}
+.nav-link[aria-current="true"] .n{color:var(--omega)}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:9px;font-size:11.5px;color:var(--fg-3);line-height:1.45}
+.theme-btn{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);color:var(--fg-2);border-radius:999px;padding:4px 11px;font:inherit;font-size:11.5px;cursor:pointer}
+.theme-btn:hover{color:var(--fg);border-color:var(--fg-3)}
+
+.main{min-width:0;padding-block:30px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto}
+
+/* mobile tab bar */
+.tabbar{display:none}
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .tabbar{display:block;position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+  .tabbar-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:9px 4px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .tabbar-top .rail-title{font-size:16px}
+  .tabscroll{display:flex;gap:4px;overflow-x:auto;padding-block:0 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scrollbar-width:none}
+  .tabscroll::-webkit-scrollbar{display:none}
+  .tabscroll .nav-link{display:block;white-space:nowrap;border:1px solid var(--line);padding:5px 11px;font-size:12.5px}
+  .tabscroll .nav-link .n{display:none}
+}
+
+/* ---------- type ---------- */
+h2.sec-title{font-family:var(--font-display);font-weight:800;font-size:clamp(26px,4.2vw,38px);line-height:1.06;letter-spacing:-.025em;margin:0;text-wrap:balance}
+h3{font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h4{font-family:var(--font-body);font-weight:600;font-size:13px;letter-spacing:.02em;margin:0;color:var(--fg-2)}
+p{margin:0}
+.lede{font-size:16.5px;color:var(--fg-2);max-width:62ch;line-height:1.62}
+.sec{display:flex;flex-direction:column;gap:24px}
+.sec-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line-soft);padding-bottom:20px}
+.slide-tag{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);letter-spacing:.04em}
+.prose{display:flex;flex-direction:column;gap:12px;max-width:66ch}
+.prose p{color:var(--fg-2)}
+ul.bul{margin:0;padding-left:18px;color:var(--fg-2);display:flex;flex-direction:column;gap:5px}
+
+/* ---------- math ---------- */
+.m{font-family:var(--font-math);font-size:1.12em;line-height:1.35;font-feature-settings:"lnum"}
+.m i,.var{font-style:italic}
+.eq{font-family:var(--font-math);font-size:clamp(18px,2.6vw,22px);line-height:1.5;display:flex;flex-wrap:wrap;align-items:center;gap:.12em;min-width:0}
+.eq.big{font-size:clamp(21px,3.2vw,27px)}
+.vec,.hatv{position:relative;display:inline-block;font-style:italic}
+.vec::after{content:"→";position:absolute;left:-.04em;right:0;top:-.62em;font-size:.56em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.hatv::after{content:"^";position:absolute;left:0;right:0;top:-.44em;font-size:.72em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.frac{display:inline-flex;flex-direction:column;vertical-align:-.46em;text-align:center;margin:0 .14em;font-size:.86em}
+.frac>span{padding:0 .22em;display:block}
+.frac>span:last-child{border-top:1.3px solid currentColor;margin-top:1px}
+sub,sup{font-size:.62em;font-style:normal}
+.om{color:var(--omega)} .rv{color:var(--rvec)} .vv{color:var(--vvec)} .lv{color:var(--lvec)} .tv{color:var(--tau)}
+.eq-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.eq-card .cap{font-size:12.5px;color:var(--fg-3);line-height:1.5}
+.eq-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+
+/* ---------- panels / viz ---------- */
+.viz{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.viz-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
+.viz-head h3{font-size:14px}
+.stage{position:relative;background:var(--surface);min-width:0}
+canvas{display:block;width:100%;height:auto;touch-action:pan-y}
+.hint{position:absolute;right:9px;bottom:7px;font-size:10.5px;color:var(--fg-3);background:color-mix(in srgb,var(--surface) 82%,transparent);padding:2px 7px;border-radius:5px;pointer-events:none}
+.controls{display:grid;gap:13px 20px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));padding:14px 15px;border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ctl label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ctl label .val{font-family:var(--font-data);font-size:11.5px;color:var(--fg);text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--omega);height:20px;margin:0}
+.btn{background:var(--surface);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--fg-3)}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px}
+.readout{display:grid;gap:10px 18px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));padding:13px 15px;border-top:1px solid var(--line-soft)}
+.ro{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ro .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.ro .v{font-family:var(--font-data);font-size:14px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--fg-2)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:16px;height:3px;border-radius:2px;display:inline-block;flex:none}
+
+/* ---------- derivation stepper ---------- */
+.deriv{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.deriv-steps{list-style:none;margin:0;padding:0}
+.deriv-steps li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;padding:15px 17px;border-top:1px solid var(--line-soft);transition:opacity .25s,filter .25s}
+.deriv-steps li:first-child{border-top:0}
+.deriv-steps li[data-off="1"]{opacity:.28;filter:saturate(.25)}
+.deriv-steps .sn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:6px;font-variant-numeric:tabular-nums}
+.deriv-body{display:flex;flex-direction:column;gap:7px;min-width:0}
+.deriv-body .why{font-size:13px;color:var(--fg-2);line-height:1.52}
+.scrollx{overflow-x:auto;max-width:100%}
+
+/* ---------- misc blocks ---------- */
+.note{border-left:3px solid var(--omega);background:var(--surface);padding:13px 16px;border-radius:0 10px 10px 0;font-size:13.5px;color:var(--fg-2);line-height:1.56}
+.note strong{color:var(--fg)}
+.note.warn{border-left-color:var(--tau)}
+.note.ok{border-left-color:var(--ok)}
+table.cmp{width:100%;border-collapse:collapse;font-size:14px}
+table.cmp th,table.cmp td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+table.cmp thead th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+table.cmp tbody th{font-weight:500;color:var(--fg-2);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--fg-2);background:var(--surface)}
+
+/* ---------- quiz ---------- */
+.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:11px;box-shadow:var(--shadow)}
+.q .qh{display:flex;gap:10px;align-items:baseline}
+.q .qn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);flex:none}
+.q .qt{font-size:15px;line-height:1.5}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;text-align:left;background:var(--surface-2);border:1px solid transparent;border-radius:9px;padding:9px 12px;font:inherit;font-size:14px;color:var(--fg);cursor:pointer;line-height:1.45}
+.opt:hover:not(:disabled){border-color:var(--fg-3)}
+.opt .mk{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:3px;flex:none}
+.opt[data-state="right"]{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface-2))}
+.opt[data-state="wrong"]{border-color:var(--tau);background:color-mix(in srgb,var(--tau) 12%,var(--surface-2))}
+.opt:disabled{cursor:default}
+.expl{font-size:13px;color:var(--fg-2);line-height:1.56;border-left:2px solid var(--line);padding-left:11px}
+.score{position:sticky;bottom:12px;align-self:center;background:var(--fg);color:var(--bg);border-radius:999px;padding:7px 18px;font-size:13px;font-weight:600;box-shadow:var(--shadow);font-variant-numeric:tabular-nums}
+
+/* ---------- formula sheet ---------- */
+.sheet{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.sheet-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 17px;display:flex;flex-direction:column;gap:9px}
+.sheet-card .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sheet-card h4{font-size:12px}
+.jump{background:none;border:0;color:var(--vvec);font:inherit;font-size:11.5px;cursor:pointer;padding:0;white-space:nowrap}
+.jump:hover{text-decoration:underline}
+dl.sym{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;margin:0;font-size:13.5px;align-items:baseline}
+dl.sym dt{font-family:var(--font-math);font-size:16px;color:var(--fg)}
+dl.sym dd{margin:0;color:var(--fg-2)}
+
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+:focus-visible{outline:2px solid var(--vvec);outline-offset:2px;border-radius:5px}
+</style>
+
+</head>
+<body>
+<div class="shell">
+<aside class="rail">
+  <div class="rail-head">
+    <div class="eyebrow">Chapter 4</div>
+    <div class="rail-title">Rigid Body in Motion</div>
+  </div>
+  <nav><ol id="navlist"></ol></nav>
+  <div class="rail-foot">
+    <button class="theme-btn" id="themeBtn" type="button">Theme: system</button>
+    <div>Drag any 3D view to orbit it. Every coloured term in an equation is the colour of its arrow.</div>
+  </div>
+</aside>
+
+<main class="main">
+<div class="tabbar">
+  <div class="tabbar-top">
+    <div class="rail-title">Rigid Body in Motion</div>
+    <button class="theme-btn" id="themeBtn2" type="button">Theme</button>
+  </div>
+  <div class="tabscroll" id="tabscroll"></div>
+</div>
+<div class="wrap">
+
+<!-- ===================== 1. ANALOGY ===================== -->
+<section class="sec" id="s-analogy" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 2–3</div>
+    <h2 class="sec-title">Rotation is translation, with every symbol swapped</h2>
+    <p class="lede">Every law you already know for a mass moving in a straight line has an exact twin for a body turning about an axis. Push both with the same effort and watch the twins keep step.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Same effort, two kinds of motion</h3>
+      <div class="btnrow">
+        <button class="btn" id="an-play" type="button">Push</button>
+        <button class="btn" id="an-reset" type="button">Reset</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-analogy"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="an-eff">Applied effort <span class="val" id="an-eff-v">4.0</span></label><input type="range" id="an-eff" min="0.5" max="10" step="0.1" value="4"></div>
+      <div class="ctl"><label for="an-inertia">Mass <span class="m">m</span> &amp; inertia <span class="m">I</span> <span class="val" id="an-inertia-v">1.0</span></label><input type="range" id="an-inertia" min="0.4" max="4" step="0.1" value="1"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">v = F t / m</div><div class="v" id="an-v">0.00 m/s</div></div>
+      <div class="ro"><div class="k">ω = τ t / I</div><div class="v om" id="an-w">0.00 rad/s</div></div>
+      <div class="ro"><div class="k">p = m v</div><div class="v" id="an-p">0.00</div></div>
+      <div class="ro"><div class="k">L = I ω</div><div class="v lv" id="an-L">0.00</div></div>
+      <div class="ro"><div class="k">½ m v²</div><div class="v" id="an-ke1">0.00 J</div></div>
+      <div class="ro"><div class="k">½ I ω²</div><div class="v" id="an-ke2">0.00 J</div></div>
+    </div>
+  </div>
+
+  <div class="scrollx">
+  <table class="cmp">
+    <thead><tr><th>Idea</th><th>Translation</th><th>Rotation</th></tr></thead>
+    <tbody>
+      <tr><th>Reluctance to change</th><td class="m">mass&nbsp;&nbsp;<i>m</i></td><td class="m">moment of inertia&nbsp;&nbsp;<i>I</i> = Σ <i>m<sub>j</sub>r<sub>j</sub></i><sup>2</sup></td></tr>
+      <tr><th>How much motion</th><td class="m">momentum&nbsp;&nbsp;<span class="vec">p</span> = <i>m</i><span class="vec">v</span></td><td class="m lv">angular momentum&nbsp;&nbsp;<span class="vec">L</span> = <i>I</i><span class="vec om">ω</span></td></tr>
+      <tr><th>What changes it</th><td class="m">force&nbsp;&nbsp;<span class="vec">F</span> = <i>m</i><span class="vec">a</span></td><td class="m tv">torque&nbsp;&nbsp;<span class="vec">τ</span> = <i>I</i><span class="vec">α</span></td></tr>
+      <tr><th>Kinetic energy</th><td class="m"><span class="frac"><span>1</span><span>2</span></span><i>mv</i><sup>2</sup></td><td class="m"><span class="frac"><span>1</span><span>2</span></span><i>I</i><span class="om">ω</span><sup>2</sup></td></tr>
+      <tr><th>Work done</th><td class="m">∫ <span class="vec">F</span> · <i>d</i><span class="vec">r</span></td><td class="m">∫ <span class="tv">τ</span> <i>dθ</i></td></tr>
+      <tr><th>Power</th><td class="m"><span class="vec">F</span> · <span class="vec">v</span></td><td class="m"><span class="vec tv">τ</span> · <span class="vec om">ω</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="prose">
+    <h3>Where this actually shows up</h3>
+    <p>Rigid-body mechanics is what you need the moment something turns rather than just travels:</p>
+    <div class="chips">
+      <span class="chip">wheels and axles</span><span class="chip">gears</span><span class="chip">engines</span>
+      <span class="chip">turbines</span><span class="chip">robotic arms</span><span class="chip">gyroscopes</span>
+      <span class="chip">flywheels</span><span class="chip">rotating machinery</span>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 2. FIXED AXIS ===================== -->
+<section class="sec" id="s-fixed-axis" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slide 4</div>
+    <h2 class="sec-title">When is the axis actually fixed?</h2>
+    <p class="lede">Almost every formula in this chapter assumes <em>fixed-axis rotation</em>. A car wheel satisfies it only while the car drives straight ahead. Switch between the three cases and watch the <span class="om">ω⃗</span> arrow.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>A wheel, three ways</h3>
+      <div class="btnrow">
+        <button class="btn" data-fa="straight" aria-pressed="true" type="button">Driving straight</button>
+        <button class="btn" data-fa="turning" aria-pressed="false" type="button">Turning</button>
+        <button class="btn" data-fa="wobble" aria-pressed="false" type="button">Off the axle</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-fixed"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="readout">
+      <div class="ro"><div class="k">Axis direction</div><div class="v om" id="fa-dir">(1.00, 0.00, 0.00)</div></div>
+      <div class="ro"><div class="k">Fixed axis?</div><div class="v" id="fa-ok">yes</div></div>
+      <div class="ro"><div class="k">Valid here</div><div class="v" id="fa-valid">τ = Iα, L = Iω</div></div>
+    </div>
+  </div>
+
+  <div class="note" id="fa-note"><strong>Driving straight.</strong> The wheel turns about the axle and nothing else. <span class="om">ω⃗</span> keeps one direction, so a single number <span class="m"><i>I</i></span> describes the whole body and <span class="m"><span class="tv">τ</span> = <i>I</i><span class="om">α</span></span> holds.</div>
+
+  <div class="prose">
+    <p>From the slide, in full: a car wheel attached to an axle undergoes fixed-axis rotation as long as the car drives straight ahead. If the car turns, the wheel must rotate about a vertical axis while simultaneously spinning on the axle — the motion is no longer fixed-axis rotation. If the wheel flies off the axle and wobbles down the road, the motion is definitely not rotation about a fixed axis.</p>
+    <p>This matters because <span class="m"><i>I</i></span> is only a single number for a chosen axis. Change the axis and <span class="m"><i>I</i></span> changes, <span class="m"><span class="vec lv">L</span></span> stops being parallel to <span class="m"><span class="vec om">ω</span></span>, and you need the full inertia tensor.</p>
+  </div>
+</section>
+
+<!-- ===================== 3. LAWS ===================== -->
+<section class="sec" id="s-laws" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 5, 7, 8</div>
+    <h2 class="sec-title">The dynamical formulas, and where they come from</h2>
+    <p class="lede">Four results do most of the work. The two on the right are the ones that trip people up, because they split a body's motion into spin about the centre of mass plus travel of the centre of mass itself.</p>
+  </div>
+
+  <h3>a. Pure rotation about a fixed axis — no translation</h3>
+  <div class="eq-grid">
+    <div class="eq-card">
+      <div class="eq big"><span class="vec lv">L</span><span>=</span><span class="m"><i>I</i></span><span class="vec om">ω</span></div>
+      <div class="cap">Angular momentum. Parallel to the axis, proportional to how fast it spins.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq big"><span class="vec tv">τ</span><span>=</span><span class="m"><i>I</i></span><span class="vec">α</span></div>
+      <div class="cap">Torque sets angular acceleration — Newton's second law for turning.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq big"><span class="m"><i>K</i></span><span>=</span><span class="m"><span class="frac"><span>1</span><span>2</span></span><i>I</i><span class="om">ω</span><sup>2</sup></span></div>
+      <div class="cap">Rotational kinetic energy.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq big"><span class="m"><i>W</i></span><span>=</span><span class="m">∫<sub>θ₁</sub><sup>θ₂</sup> <span class="tv">τ</span> <i>dθ</i></span><span>=</span><span class="m">Δ<i>K</i></span></div>
+      <div class="cap">Work–energy theorem for rotation.</div>
+    </div>
+  </div>
+
+  <div class="deriv" id="d-work">
+    <div class="viz-head"><h3>Derivation: why ∫τ dθ equals ΔK</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-work" type="button">Back</button><button class="btn primary" data-deriv-next="d-work" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><i>W</i> = ∫ <span class="vec">F</span> · <i>d</i><span class="vec">r</span></span></div><div class="why">Start from the definition of work you already have for translation. Nothing new yet.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><i>d</i><span class="vec">r</span> = (<span class="vec om">ω</span> × <span class="vec rv">r</span>) <i>dt</i></span></div><div class="why">For a rigid body turning about a fixed axis, every particle's displacement is forced by the rotation. This is the one substitution that turns a translation law into a rotation law.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec">F</span> · (<span class="vec om">ω</span> × <span class="vec rv">r</span>) = <span class="vec om">ω</span> · (<span class="vec rv">r</span> × <span class="vec">F</span>) = <span class="vec om">ω</span> · <span class="vec tv">τ</span></span></div><div class="why">Rotate the scalar triple product. The force reappears only as its torque — any part of <span class="m"><span class="vec">F</span></span> pointing along <span class="m"><span class="vec rv">r</span></span> does no work, which is exactly what torque already throws away.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq"><span class="m"><i>W</i> = ∫ <span class="tv">τ</span> <span class="om">ω</span> <i>dt</i> = ∫<sub>θ₁</sub><sup>θ₂</sup> <span class="tv">τ</span> <i>dθ</i></span></div><div class="why">Because <span class="m"><span class="om">ω</span> = <i>dθ</i>/<i>dt</i></span>. Torque × angle swept, the exact mirror of force × distance.</div></div></li>
+      <li><div class="sn">05</div><div class="deriv-body"><div class="eq"><span class="m"><span class="tv">τ</span> = <i>I</i> <span class="frac"><span><i>d</i><span class="om">ω</span></span><span><i>dt</i></span></span> = <i>I</i> <span class="om">ω</span> <span class="frac"><span><i>d</i><span class="om">ω</span></span><span><i>dθ</i></span></span></span></div><div class="why">Chain rule, so the integral can be taken over <span class="m"><span class="om">ω</span></span> instead of <span class="m"><i>θ</i></span>.</div></div></li>
+      <li><div class="sn">06</div><div class="deriv-body"><div class="eq big"><span class="m"><i>W</i> = ∫ <i>I</i><span class="om">ω</span> <i>d</i><span class="om">ω</span> = <span class="frac"><span>1</span><span>2</span></span><i>I</i><span class="om">ω</span><sub>2</sub><sup>2</sup> − <span class="frac"><span>1</span><span>2</span></span><i>I</i><span class="om">ω</span><sub>1</sub><sup>2</sup></span></div><div class="why">The work–energy theorem for rotation. Same shape as <span class="m">½<i>mv</i><sub>2</sub><sup>2</sup> − ½<i>mv</i><sub>1</sub><sup>2</sup></span>, with the swapped symbols from the table in section 01.</div></div></li>
+    </ol>
+  </div>
+
+  <h3>b. Rotation <em>and</em> translation</h3>
+  <p class="prose">Subscript 0 refers to the centre of mass. Write each particle's position as <span class="m"><span class="vec rv">r</span> = <span class="vec">R</span> + <span class="vec">r</span>′</span> — centre of mass plus a bit measured from it — and the angular momentum splits cleanly in two.</p>
+
+  <div class="eq-grid">
+    <div class="eq-card">
+      <div class="eq"><span class="m"><span class="lv"><i>L<sub>z</sub></i></span> = <i>I</i><sub>0</sub><span class="om">ω</span> + (<span class="vec">R</span> × <i>M</i><span class="vec vv">V</span>)<sub><i>z</i></sub></span></div>
+      <div class="cap"><strong>Spin</strong> about the centre of mass, plus the <strong>orbital</strong> angular momentum of the centre of mass treated as one point particle.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq"><span class="m"><span class="tv"><i>τ<sub>z</sub></i></span> = <span class="tv"><i>τ</i></span><sub>0</sub> + (<span class="vec">R</span> × <span class="vec">F</span>)<sub><i>z</i></sub></span></div>
+      <div class="cap">Torque about the centre of mass from the individual external forces, plus the torque of the total force acting at the centre of mass.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq"><span class="m"><span class="vec tv">τ</span> = Σ<sub><i>j</i></sub> (<span class="vec">r</span>′<sub><i>j</i></sub> × <span class="vec"><i>f</i></span><sub><i>j</i></sub>) + <span class="vec">R</span> × <span class="vec">F</span></span></div>
+      <div class="cap">The same split written out before taking the <span class="m"><i>z</i></span> component.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq"><span class="m"><i>K</i> = <span class="frac"><span>1</span><span>2</span></span><i>I</i><sub>0</sub><span class="om">ω</span><sup>2</sup> + <span class="frac"><span>1</span><span>2</span></span><i>MV</i><sup>2</sup></span></div>
+      <div class="cap">Kinetic energy splits the same way: spin energy plus the energy of the centre of mass.</div>
+    </div>
+  </div>
+
+  <div class="note"><strong>Read the split this way.</strong> <span class="m"><span class="vec">R</span></span> is the position vector of the centre of mass measured from whatever origin you chose. Move the origin to the centre of mass and the orbital term vanishes — which is exactly the trick used in section 08 on the rolling wheel.</div>
+</section>
+
+<!-- ===================== 4. PENDULUM ===================== -->
+<section class="sec" id="s-pendulum" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slide 6</div>
+    <h2 class="sec-title">The rigid-body pendulum</h2>
+    <p class="lede">A whole body swinging on a pivot, not a bob on a string. Gravity acts at the centre of mass, a distance <span class="m"><i>l</i></span> from the pivot, and the body's own <span class="m"><i>I</i></span> decides how slowly it swings.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Swing it</h3>
+      <div class="btnrow">
+        <button class="btn" data-pb="point" aria-pressed="true" type="button">Point mass</button>
+        <button class="btn" data-pb="rod" aria-pressed="false" type="button">Rod on its end</button>
+        <button class="btn" data-pb="disc" aria-pressed="false" type="button">Disc on its rim</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-pend"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="pd-a0">Release angle <span class="m"><i>θ</i></span><sub>0</sub> <span class="val" id="pd-a0-v">25°</span></label><input type="range" id="pd-a0" min="2" max="170" step="1" value="25"></div>
+      <div class="ctl"><label for="pd-l">Pivot-to-CM distance <span class="m"><i>l</i></span> <span class="val" id="pd-l-v">0.60 m</span></label><input type="range" id="pd-l" min="0.15" max="1.2" step="0.01" value="0.6"></div>
+      <div class="ctl"><label for="pd-m">Mass <span class="m"><i>M</i></span> <span class="val" id="pd-m-v">1.0 kg</span></label><input type="range" id="pd-m" min="0.2" max="5" step="0.1" value="1"></div>
+      <div class="ctl" style="justify-content:flex-end"><div class="btnrow"><button class="btn primary" id="pd-play" type="button">Pause</button><button class="btn" id="pd-reset" type="button">Release again</button></div></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Moment of inertia I</div><div class="v" id="pd-I">0.360 kg·m²</div></div>
+      <div class="ro"><div class="k">ω = √(Mgl / I)</div><div class="v om" id="pd-w">4.04 rad/s</div></div>
+      <div class="ro"><div class="k">Small-angle period</div><div class="v" id="pd-T">1.554 s</div></div>
+      <div class="ro"><div class="k">True period (measured)</div><div class="v" id="pd-Tt">—</div></div>
+      <div class="ro"><div class="k">Error of the approximation</div><div class="v" id="pd-err">—</div></div>
+    </div>
+  </div>
+
+  <div class="legend" style="padding:0 2px">
+    <span><i style="background:var(--fg)"></i> true nonlinear swing</span>
+    <span><i style="background:var(--omega)"></i> small-angle solution <span class="m"><i>θ</i> = <i>θ</i><sub>0</sub> cos <span class="om">ω</span><i>t</i></span></span>
+  </div>
+
+  <div class="deriv" id="d-pend">
+    <div class="viz-head"><h3>Derivation: from torque to a sine wave</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-pend" type="button">Back</button><button class="btn primary" data-deriv-next="d-pend" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec tv">τ</span> = <span class="vec rv">r</span> × <span class="vec">F</span> = −<i>lMg</i> sin <i>θ</i> <span class="hatv">z</span></span></div><div class="why">Only the component of gravity perpendicular to the body, <span class="m"><i>Mg</i> sin <i>θ</i></span>, produces torque. The <span class="m"><i>Mg</i> cos <i>θ</i></span> component points along <span class="m"><span class="vec rv">r</span></span> and contributes nothing. The minus sign says the torque always pushes back toward <span class="m"><i>θ</i> = 0</span>.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><i>I</i><span class="om">α</span> = −<i>lMg</i> sin <i>θ</i></span></div><div class="why">Apply <span class="m"><span class="tv">τ</span> = <i>I</i><span class="om">α</span></span> about the pivot. Note <span class="m"><i>I</i></span> is taken about the <em>pivot</em>, not the centre of mass.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m"><i>I</i> <span class="frac"><span><i>d</i><sup>2</sup><i>θ</i></span><span><i>dt</i><sup>2</sup></span></span> + <i>Mgl</i> sin <i>θ</i> = 0</span></div><div class="why">Rearranged, this is the exact equation of motion. It has no solution in elementary functions — the black curve above is this equation integrated numerically.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq"><span class="m">sin <i>θ</i> ≈ <i>θ</i>&nbsp;&nbsp;⟹&nbsp;&nbsp;<i>I θ̈</i> + <i>Mgl θ</i> = 0</span></div><div class="why">The small-angle approximation. Push the release-angle slider above 30° and watch the two curves drift apart — that drift is this line failing.</div></div></li>
+      <li><div class="sn">05</div><div class="deriv-body"><div class="eq big"><span class="m"><i>θ</i>(<i>t</i>) = <i>A</i> sin <span class="om">ω</span><i>t</i> + <i>B</i> cos <span class="om">ω</span><i>t</i>,&nbsp;&nbsp;&nbsp;<span class="om">ω</span> = <span class="m">√<span style="border-top:1.2px solid currentColor;padding-top:1px"><span class="frac"><span><i>Mgl</i></span><span><i>I</i></span></span></span></span></span></div><div class="why">Simple harmonic motion. <span class="m"><i>A</i></span> and <span class="m"><i>B</i></span> come from how you release it; released from rest at <span class="m"><i>θ</i><sub>0</sub></span> gives <span class="m"><i>A</i> = 0</span>, <span class="m"><i>B</i> = <i>θ</i><sub>0</sub></span>.</div></div></li>
+    </ol>
+  </div>
+
+  <div class="note ok"><strong>Sanity check the formula.</strong> Put a point mass at the end of a massless rod: <span class="m"><i>I</i> = <i>Ml</i><sup>2</sup></span>, so <span class="m"><span class="om">ω</span> = √(<i>Mgl</i>/<i>Ml</i><sup>2</sup>) = √(<i>g</i>/<i>l</i>)</span> — the simple pendulum, recovered. Switch the body buttons above and the <span class="m"><i>I</i></span> readout changes while <span class="m"><span class="om">ω</span> = √(<i>Mgl</i>/<i>I</i>)</span> keeps working.</div>
+</section>
+
+<!-- ===================== 5. ROTATIONS DON'T COMMUTE ===================== -->
+<section class="sec" id="s-rotations" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 9–11</div>
+    <h2 class="sec-title">Why <span class="m"><i>θ</i></span> is not a vector but <span class="m"><span class="vec om">ω</span></span> is</h2>
+    <p class="lede">This is the one result in the chapter you cannot get from a formula — you have to watch it. Rotate a box 90° about <span class="m"><span class="hatv">x</span></span> then 90° about <span class="m"><span class="hatv">y</span></span>, then do it in the other order. Vectors add the same either way. These don't.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Two boxes, two orders, same angles</h3>
+      <div class="btnrow">
+        <button class="btn primary" id="rc-play" type="button">Run both</button>
+        <button class="btn" id="rc-reset" type="button">Reset</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-rot"></canvas><div class="hint">drag to orbit both</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="rc-ang">Rotation angle <span class="m"><i>θ</i></span> <span class="val" id="rc-ang-v">90°</span></label><input type="range" id="rc-ang" min="1" max="90" step="1" value="90"></div>
+      <div class="ctl" style="justify-content:center"><div class="legend"><span><i style="background:var(--vvec)"></i> order A: x then y</span><span><i style="background:var(--lvec)"></i> order B: y then x</span></div></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Mismatch between the two results</div><div class="v" id="rc-mis">120.0°</div></div>
+      <div class="ro"><div class="k">Mismatch ÷ θ²</div><div class="v" id="rc-ratio">0.0133 /deg</div></div>
+      <div class="ro"><div class="k">Verdict</div><div class="v" id="rc-verd">do not commute</div></div>
+    </div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head"><h3>Mismatch shrinks like <span class="m"><i>θ</i><sup>2</sup></span></h3></div>
+    <div class="stage"><canvas id="cv-rotplot"></canvas></div>
+  </div>
+
+  <div class="prose">
+    <h3>What the slides are claiming, line by line</h3>
+    <p><strong>Can an angular orientation be a vector?</strong> No. There is no way to construct a vector <span class="m"><span class="vec">θ</span> = <i>θ<sub>x</sub></i><span class="hatv">x</span> + θ<sub>y</sub><span class="hatv">y</span> + θ<sub>z</sub><span class="hatv">z</span></span> that represents an orientation, because vector addition commutes and finite rotations do not:</p>
+    <div class="eq" style="padding-left:2px"><span class="m">(<i>θ<sub>x</sub></i><span class="hatv">x</span> + <i>θ<sub>y</sub></i><span class="hatv">y</span>) &nbsp;≠&nbsp; (<i>θ<sub>y</sub></i><span class="hatv">y</span> + <i>θ<sub>x</sub></i><span class="hatv">x</span>)</span></div>
+    <p><strong>Can angular velocity be a vector?</strong> Yes. Drag the angle slider down toward 1° and watch the mismatch readout collapse — it falls off as <span class="m"><i>θ</i><sup>2</sup></span>, so for an <em>infinitesimal</em> rotation the order stops mattering at first order. Infinitesimal rotations do commute, which is exactly what makes</p>
+    <div class="eq big" style="padding-left:2px"><span class="m"><span class="vec om">ω</span> = <span class="frac"><span><i>d</i><span class="vec">θ</span></span><span><i>dt</i></span></span></span></div>
+    <p>a genuine vector, even though <span class="m"><span class="vec">θ</span></span> itself is not. The derivative is built from infinitesimal rotations, and those add like vectors.</p>
+  </div>
+
+  <div class="note warn"><strong>The practical consequence.</strong> You may add angular velocities as vectors — a wheel spinning on an axle while the car turns has <span class="m"><span class="vec om">ω</span><sub>total</sub> = <span class="vec om">ω</span><sub>spin</sub> + <span class="vec om">ω</span><sub>turn</sub></span>. You may never add finite angles that way.</div>
+</section>
+
+<!-- ===================== 6. v = w x r ===================== -->
+<section class="sec" id="s-cross" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 12–15</div>
+    <h2 class="sec-title"><span class="m"><span class="vec vv">v</span> = <span class="vec om">ω</span> × <span class="vec rv">r</span></span></h2>
+    <p class="lede">Once <span class="m"><span class="vec om">ω</span></span> is a vector, the velocity of every point in the body follows from one cross product. Drag the axis anywhere and watch what the formula produces.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Tilt the axis, move the point</h3>
+      <div class="btnrow">
+        <button class="btn" data-cvw="side" type="button">Side view</button>
+        <button class="btn" data-cvw="top" type="button">Top view</button>
+        <button class="btn" data-cvw="free" aria-pressed="true" type="button">Free</button>
+        <button class="btn primary" id="cv-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-cross"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="cr-tilt">Axis tilt from <span class="m"><span class="hatv">z</span></span> <span class="val" id="cr-tilt-v">30°</span></label><input type="range" id="cr-tilt" min="0" max="90" step="1" value="30"></div>
+      <div class="ctl"><label for="cr-phi">Angle <span class="m"><i>φ</i></span> between <span class="m"><span class="vec om">ω</span></span> and <span class="m"><span class="vec rv">r</span></span> <span class="val" id="cr-phi-v">55°</span></label><input type="range" id="cr-phi" min="5" max="175" step="1" value="55"></div>
+      <div class="ctl"><label for="cr-w">Spin rate <span class="m"><span class="om">ω</span></span> <span class="val" id="cr-w-v">1.0 rad/s</span></label><input type="range" id="cr-w" min="-2.5" max="2.5" step="0.1" value="1"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">|r|</div><div class="v rv" id="cr-r">1.00 m</div></div>
+      <div class="ro"><div class="k">Circle radius r sin φ</div><div class="v" id="cr-rad">0.82 m</div></div>
+      <div class="ro"><div class="k">|v| = ω r sin φ</div><div class="v vv" id="cr-v">0.82 m/s</div></div>
+      <div class="ro"><div class="k">v · r</div><div class="v" id="cr-dot1">0.000</div></div>
+      <div class="ro"><div class="k">v · ω</div><div class="v" id="cr-dot2">0.000</div></div>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>The two dot products above stay pinned at zero no matter what you drag. That is the whole content of the cross product: <strong>the velocity is perpendicular to the plane of <span class="m"><span class="vec rv">r</span></span> and <span class="m"><span class="vec om">ω</span></span></strong>, which is the same as saying it is tangential to the circle the point travels on.</p>
+    <p>Notice too that the point does <em>not</em> circle at radius <span class="m"><i>r</i></span> — it circles at radius <span class="m"><i>r</i> sin <i>φ</i></span>, its perpendicular distance from the axis. Set <span class="m"><i>φ</i></span> near 5° or 175° and the point nearly sits on the axis, barely moving. That <span class="m">sin <i>φ</i></span> is the whole reason a cross product, rather than a plain product, appears here.</p>
+  </div>
+
+  <div class="deriv" id="d-cross">
+    <div class="viz-head"><h3>Derivation: where the cross product comes from</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-cross" type="button">Back</button><button class="btn primary" data-deriv-next="d-cross" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m">|<i>d</i><span class="vec rv">r</span>| = (<i>r</i> sin <i>φ</i>) <i>dθ</i></span></div><div class="why">In time <span class="m"><i>dt</i></span> the body turns by <span class="m"><i>dθ</i></span>, and the point moves along a circle of radius <span class="m"><i>r</i> sin <i>φ</i></span> — arc length equals radius times angle.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m">|<span class="vec vv">v</span>| = <span class="frac"><span>|<i>d</i><span class="vec rv">r</span>|</span><span><i>dt</i></span></span> = <span class="om">ω</span> <i>r</i> sin <i>φ</i></span></div><div class="why">Divide by <span class="m"><i>dt</i></span>. The magnitude already looks like a cross product.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec vv">v</span> ⊥ <span class="vec om">ω</span>&nbsp;&nbsp;and&nbsp;&nbsp;<span class="vec vv">v</span> ⊥ <span class="vec rv">r</span></span></div><div class="why">The direction is tangential to the circle, so it is perpendicular to the plane containing <span class="m"><span class="vec rv">r</span></span> and <span class="m"><span class="vec om">ω</span></span>. Both readouts above confirm it numerically.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq big"><span class="m"><span class="vec vv">v</span> = <span class="vec om">ω</span> × <span class="vec rv">r</span></span></div><div class="why">One vector with exactly that magnitude and exactly that direction, with the right-hand sense built in. For an <em>infinitesimal</em> rotation, <span class="m"><i>d</i><span class="vec rv">r</span> = <i>d</i><span class="vec">θ</span> × <span class="vec rv">r</span></span> — and this only makes sense because of section 05.</div></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== 7. WORKED EXAMPLE ===================== -->
+<section class="sec" id="s-vertical" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 16–19 · worked example</div>
+    <h2 class="sec-title">A particle rotating in a vertical plane</h2>
+    <p class="lede">The angular velocity <span class="m"><span class="vec om">ω</span></span> lies in the <span class="m"><i>XY</i></span> plane at 45° to both <span class="m">+<i>X</i></span> and <span class="m">+<i>Y</i></span>. Find the particle's velocity. Two routes — differentiate <span class="m"><span class="vec rv">r</span></span>, or take <span class="m"><span class="vec om">ω</span> × <span class="vec rv">r</span></span> — and they appear to disagree by a sign. Resolving that is the real lesson.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>The geometry, live</h3>
+      <div class="btnrow">
+        <button class="btn" data-vpv="iso" aria-pressed="true" type="button">Isometric</button>
+        <button class="btn" data-vpv="down" type="button">Down the axis</button>
+        <button class="btn" data-vpv="topv" type="button">Top view</button>
+        <button class="btn primary" id="vp-play" type="button">Animate</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-vert"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="vp-th">Angle <span class="m"><i>θ</i></span> from the <span class="m"><i>z</i></span> axis <span class="val" id="vp-th-v">60°</span></label><input type="range" id="vp-th" min="0" max="360" step="1" value="60"></div>
+      <div class="ctl"><label for="vp-w">Spin rate <span class="m"><span class="om">ω</span></span> <span class="val" id="vp-w-v">1.0 rad/s</span></label><input type="range" id="vp-w" min="0.2" max="2.5" step="0.1" value="1"></div>
+      <div class="ctl" style="justify-content:center"><div class="legend"><span><i style="background:var(--omega)"></i> ω⃗</span><span><i style="background:var(--rvec)"></i> r⃗</span><span><i style="background:var(--vvec)"></i> v⃗ = ω⃗ × r⃗</span></div></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">r⃗ components (× r)</div><div class="v rv" id="vp-r">(−0.61, 0.61, 0.50)</div></div>
+      <div class="ro"><div class="k">XY projection lies in</div><div class="v" id="vp-quad">2nd quadrant</div></div>
+      <div class="ro"><div class="k">v⃗ = ω⃗ × r⃗ (× ωr)</div><div class="v vv" id="vp-v">(0.35, −0.35, 0.87)</div></div>
+      <div class="ro"><div class="k">dθ/dt</div><div class="v" id="vp-thdot">−1.00 rad/s</div></div>
+      <div class="ro"><div class="k">|v| = ωr</div><div class="v" id="vp-vm">1.00</div></div>
+    </div>
+  </div>
+
+  <div class="note"><strong>Why the plane is vertical.</strong> The particle must move perpendicular to <span class="m"><span class="vec om">ω</span></span>. Since <span class="m"><span class="vec om">ω</span></span> lies flat in the <span class="m"><i>XY</i></span> plane along <span class="m">(<span class="hatv">x</span>+<span class="hatv">y</span>)/√2</span>, the plane perpendicular to it is the vertical plane spanned by <span class="m"><span class="hatv">z</span></span> and <span class="m">(−<span class="hatv">x</span>+<span class="hatv">y</span>)/√2</span>. Press <strong>Down the axis</strong> above to look straight along <span class="m"><span class="vec om">ω</span></span> and see that plane edge-on as a circle.</div>
+
+  <div class="deriv" id="d-vert">
+    <div class="viz-head"><h3>Solution, step by step</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-vert" type="button">Back</button><button class="btn primary" data-deriv-next="d-vert" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec om">ω</span> = <span class="frac"><span><span class="om">ω</span></span><span>√2</span></span>(<span class="hatv">x</span> + <span class="hatv">y</span>)</span></div><div class="why">45° to both axes means equal <span class="m"><i>x</i></span> and <span class="m"><i>y</i></span> components, and the <span class="m">1/√2</span> keeps the magnitude at <span class="m"><span class="om">ω</span></span>. No <span class="m"><i>z</i></span> component — it lies flat in the <span class="m"><i>XY</i></span> plane.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec rv">r</span> = <i>r</i> <span style="font-size:1.3em">(</span>−<span class="frac"><span>sin <i>θ</i></span><span>√2</span></span><span class="hatv">x</span> + <span class="frac"><span>sin <i>θ</i></span><span>√2</span></span><span class="hatv">y</span> + cos <i>θ</i> <span class="hatv">z</span><span style="font-size:1.3em">)</span></span></div><div class="why">Measure <span class="m"><i>θ</i></span> down from the <span class="m"><i>z</i></span> axis. The in-plane part has length <span class="m"><i>r</i> sin <i>θ</i></span> and points along <span class="m">(−<span class="hatv">x</span>+<span class="hatv">y</span>)/√2</span>, so its projection on the <span class="m"><i>XY</i></span> plane sits in the <strong>2nd quadrant</strong> — negative <span class="m"><i>x</i></span>, positive <span class="m"><i>y</i></span>. Check the magnitude: <span class="m">sin<sup>2</sup><i>θ</i>/2 + sin<sup>2</sup><i>θ</i>/2 + cos<sup>2</sup><i>θ</i> = 1</span>. ✓</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><h4>Route A — differentiate</h4><div class="eq"><span class="m"><span class="frac"><span><i>d</i><span class="vec rv">r</span></span><span><i>dt</i></span></span> = <i>r</i><span style="font-size:1.3em">(</span>−<span class="frac"><span>cos <i>θ</i></span><span>√2</span></span><span class="hatv">x</span> + <span class="frac"><span>cos <i>θ</i></span><span>√2</span></span><span class="hatv">y</span> − sin <i>θ</i> <span class="hatv">z</span><span style="font-size:1.3em">)</span> <span class="frac"><span><i>dθ</i></span><span><i>dt</i></span></span></span></div><div class="why">Only <span class="m"><i>θ</i></span> depends on time — <span class="m"><i>r</i></span> is constant — so the chain rule leaves a factor <span class="m"><i>dθ</i>/<i>dt</i></span> that we have not yet evaluated.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><h4>Route B — cross product</h4><div class="scrollx"><div class="eq"><span class="m"><span class="vec om">ω</span> × <span class="vec rv">r</span> = </span><span class="det m"><span class="hatv">x</span><span class="hatv">y</span><span class="hatv">z</span><span><span class="frac"><span><span class="om">ω</span></span><span>√2</span></span></span><span><span class="frac"><span><span class="om">ω</span></span><span>√2</span></span></span><span>0</span><span>−<span class="frac"><span><i>r</i> sin <i>θ</i></span><span>√2</span></span></span><span><span class="frac"><span><i>r</i> sin <i>θ</i></span><span>√2</span></span></span><span><i>r</i> cos <i>θ</i></span></span></div></div><div class="why">Top row the unit vectors, middle row <span class="m"><span class="vec om">ω</span></span>, bottom row <span class="m"><span class="vec rv">r</span></span>. The <span class="m"><i>z</i></span> component gets a contribution from both terms and they add rather than cancel, which is why <span class="m">√2 · √2 = 2</span> turns into a clean <span class="m">sin <i>θ</i></span>.</div></div></li>
+      <li><div class="sn">05</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec om">ω</span> × <span class="vec rv">r</span> = <span class="om">ω</span><i>r</i><span style="font-size:1.3em">(</span><span class="frac"><span>cos <i>θ</i></span><span>√2</span></span><span class="hatv">x</span> − <span class="frac"><span>cos <i>θ</i></span><span>√2</span></span><span class="hatv">y</span> + sin <i>θ</i> <span class="hatv">z</span><span style="font-size:1.3em">)</span></span></div><div class="why">Expand the determinant. Compare with Route A: <strong>every sign is opposite.</strong> One of them must be wrong — or an assumption is.</div></div></li>
+      <li><div class="sn">06</div><div class="deriv-body"><div class="eq"><span class="m"><span class="frac"><span><i>dθ</i></span><span><i>dt</i></span></span> = −<span class="om">ω</span></span></div><div class="why"><strong>The resolution.</strong> Watch the animation: with <span class="m"><span class="vec om">ω</span></span> pointing along <span class="m">(<span class="hatv">x</span>+<span class="hatv">y</span>)/√2</span>, the right-hand rule carries the particle <em>toward</em> the <span class="m"><i>z</i></span> axis, so <span class="m"><i>θ</i></span> <em>decreases</em> with time. The sign of <span class="m"><i>dθ</i>/<i>dt</i></span> is opposite to <span class="m"><span class="om">ω</span></span>. Check it at <span class="m"><i>θ</i> = 90°</span>: there <span class="m"><span class="vec rv">r</span></span> lies in the <span class="m"><i>XY</i></span> plane and <span class="m"><span class="vec om">ω</span>×<span class="vec rv">r</span> = <span class="om">ω</span><i>r</i> <span class="hatv">z</span></span>, straight up toward the <span class="m"><i>z</i></span> axis.</div></div></li>
+      <li><div class="sn">07</div><div class="deriv-body"><div class="eq big"><span class="m"><span class="vec vv">v</span> = <span class="om">ω</span><i>r</i><span style="font-size:1.3em">(</span><span class="frac"><span>cos <i>θ</i></span><span>√2</span></span><span class="hatv">x</span> − <span class="frac"><span>cos <i>θ</i></span><span>√2</span></span><span class="hatv">y</span> + sin <i>θ</i> <span class="hatv">z</span><span style="font-size:1.3em">)</span></span></div><div class="why">Substituting <span class="m"><i>dθ</i>/<i>dt</i> = −<span class="om">ω</span></span> into Route A flips all its signs, and the two routes agree. Magnitude: <span class="m"><span class="om">ω</span><i>r</i>√(cos<sup>2</sup><i>θ</i>/2 + cos<sup>2</sup><i>θ</i>/2 + sin<sup>2</sup><i>θ</i>) = <span class="om">ω</span><i>r</i></span> — constant, as it must be for a particle on a circle of radius <span class="m"><i>r</i></span>. ✓</div></div></li>
+    </ol>
+  </div>
+
+  <div class="note warn"><strong>The trap, stated plainly.</strong> <span class="m"><span class="vec om">ω</span> × <span class="vec rv">r</span></span> already knows which way the body turns — the right-hand rule is baked in. When you instead differentiate a parametrisation by hand, you have to supply that information yourself through the sign of <span class="m"><i>dθ</i>/<i>dt</i></span>. Forget it and you get a velocity pointing backwards.</div>
+</section>
+
+<!-- ===================== 8. ROLLING WHEEL ===================== -->
+<section class="sec" id="s-rolling" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 20–21</div>
+    <h2 class="sec-title">Angular momentum of a rolling wheel</h2>
+    <p class="lede">A rolling wheel has two contributions, and students lose marks by counting one of them twice or not at all: the <strong>spin</strong> of the wheel about its own centre, and the <strong>orbital</strong> motion of that centre about your chosen origin.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Rolling without slipping</h3>
+      <div class="btnrow">
+        <button class="btn" data-rwo="ground" aria-pressed="true" type="button">About the ground origin</button>
+        <button class="btn" data-rwo="cm" type="button">About the centre of mass</button>
+        <button class="btn primary" id="rw-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-roll"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="rw-M">Mass <span class="m"><i>M</i></span> <span class="val" id="rw-M-v">2.0 kg</span></label><input type="range" id="rw-M" min="0.5" max="8" step="0.1" value="2"></div>
+      <div class="ctl"><label for="rw-R">Radius <span class="m"><i>R</i></span> <span class="val" id="rw-R-v">0.30 m</span></label><input type="range" id="rw-R" min="0.1" max="0.6" step="0.01" value="0.3"></div>
+      <div class="ctl"><label for="rw-w">Spin rate <span class="m"><span class="om">ω</span></span> <span class="val" id="rw-w-v">4.0 rad/s</span></label><input type="range" id="rw-w" min="0.5" max="12" step="0.1" value="4"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">V = ωR</div><div class="v vv" id="rw-V">1.20 m/s</div></div>
+      <div class="ro"><div class="k">I₀ = ½MR²</div><div class="v" id="rw-I">0.090 kg·m²</div></div>
+      <div class="ro"><div class="k">Spin: L₀ = I₀ω</div><div class="v lv" id="rw-Ls">−0.360</div></div>
+      <div class="ro"><div class="k">Orbital: (R⃗ × MV⃗)_z</div><div class="v lv" id="rw-Lo">−0.720</div></div>
+      <div class="ro"><div class="k">Total L_z</div><div class="v" id="rw-Lt">−1.080 kg·m²/s</div></div>
+      <div class="ro"><div class="k">As a multiple of MR²ω</div><div class="v" id="rw-Lf">−3/2</div></div>
+    </div>
+  </div>
+
+  <div class="deriv" id="d-roll">
+    <div class="viz-head"><h3>Putting the two pieces together</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-roll" type="button">Back</button><button class="btn primary" data-deriv-next="d-roll" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><i>I</i><sub>0</sub> = <span class="frac"><span>1</span><span>2</span></span><i>MR</i><sup>2</sup></span></div><div class="why">Moment of inertia of a uniform wheel about its centre of mass, with the axis along the axle.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><span class="lv"><i>L</i><sub>0</sub></span> = <i>I</i><sub>0</sub><span class="om">ω</span> = −<span class="frac"><span>1</span><span>2</span></span><i>MR</i><sup>2</sup><span class="om">ω</span></span></div><div class="why"><strong>Spin term.</strong> Negative because a wheel rolling in the <span class="m">+<i>x</i></span> direction turns clockwise when <span class="m"><i>y</i></span> is up and <span class="m"><i>z</i></span> comes out of the page, so <span class="m"><span class="vec om">ω</span></span> points into the page, along <span class="m">−<span class="hatv">z</span></span>. The sign is geometry, not algebra — get it from the picture.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m"><span class="lv"><i>L<sub>z</sub></i></span> = (<span class="vec">R</span> × <i>M</i><span class="vec vv">V</span>)<sub><i>z</i></sub> = −<i>MRV</i></span></div><div class="why"><strong>Orbital term.</strong> <span class="m"><span class="vec">R</span> = <i>R</i> <span class="hatv">y</span></span> points from the ground origin up to the centre, and <span class="m"><span class="vec vv">V</span> = <i>V</i> <span class="hatv">x</span></span>. Then <span class="m"><span class="hatv">y</span> × <span class="hatv">x</span> = −<span class="hatv">z</span></span>, giving <span class="m">−<i>MRV</i></span>. Press <strong>About the centre of mass</strong> above and this term goes to zero: measured about the centre of mass, the centre of mass is not orbiting anything.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec vv">V</span> = <span class="vec om">ω</span> × <span class="vec rv">r</span>&nbsp;&nbsp;⟹&nbsp;&nbsp;<i>V</i> = <span class="om">ω</span><i>R</i></span></div><div class="why">The rolling condition, and it is just section 06 applied at the contact point. Without slipping, the contact point is instantaneously at rest, which forces <span class="m"><i>V</i> = <span class="om">ω</span><i>R</i></span>.</div></div></li>
+      <li><div class="sn">05</div><div class="deriv-body"><div class="eq big"><span class="m"><span class="lv"><i>L<sub>z</sub></i></span> = −<span class="frac"><span>1</span><span>2</span></span><i>MR</i><sup>2</sup><span class="om">ω</span> − <i>MR</i><sup>2</sup><span class="om">ω</span> = −<span class="frac"><span>3</span><span>2</span></span><i>MR</i><sup>2</sup><span class="om">ω</span></span></div><div class="why">Substitute <span class="m"><i>V</i> = <span class="om">ω</span><i>R</i></span> into the orbital term and add. The orbital part is <strong>twice</strong> the spin part — a result worth remembering, and the bars in the figure above are drawn to that scale.</div></div></li>
+    </ol>
+  </div>
+
+  <div class="note ok"><strong>Why the origin matters but the physics doesn't.</strong> Angular momentum is always <em>about a point</em>. Choosing the centre of mass kills the orbital term and gives <span class="m">−½<i>MR</i><sup>2</sup><span class="om">ω</span></span>; choosing the ground gives <span class="m">−(3/2)<i>MR</i><sup>2</sup><span class="om">ω</span></span>. Both are correct answers to different questions. What must never change is the torque you compare it against — use the same origin for both sides of <span class="m"><span class="tv">τ</span> = <i>dL</i>/<i>dt</i></span>.</div>
+</section>
+
+<!-- ===================== 9. FORMULA SHEET ===================== -->
+<section class="sec" id="s-sheet" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Every equation in Chapter 4</div>
+    <h2 class="sec-title">Formula sheet</h2>
+    <p class="lede">Each card names the section that shows you what it looks like. Every symbol is defined at the bottom — nothing here is left as "you know what this means".</p>
+  </div>
+
+  <div class="sheet">
+    <div class="sheet-card"><div class="top"><h4>Angular momentum</h4><button class="jump" data-goto="laws" type="button">section 03 →</button></div><div class="eq"><span class="m"><span class="vec lv">L</span> = <i>I</i><span class="vec om">ω</span></span></div><div class="cap">Fixed axis, measured about a point on that axis.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Newton's second law for rotation</h4><button class="jump" data-goto="laws" type="button">section 03 →</button></div><div class="eq"><span class="m"><span class="vec tv">τ</span> = <i>I</i><span class="vec">α</span> = <span class="frac"><span><i>d</i><span class="vec lv">L</span></span><span><i>dt</i></span></span></span></div><div class="cap">Same origin on both sides, always.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Torque from a force</h4><button class="jump" data-goto="pendulum" type="button">section 04 →</button></div><div class="eq"><span class="m"><span class="vec tv">τ</span> = <span class="vec rv">r</span> × <span class="vec">F</span></span></div><div class="cap">Only the component of <span class="m"><span class="vec">F</span></span> perpendicular to <span class="m"><span class="vec rv">r</span></span> counts.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Moment of inertia</h4><button class="jump" data-goto="analogy" type="button">section 01 →</button></div><div class="eq"><span class="m"><i>I</i> = Σ<sub><i>j</i></sub> <i>m<sub>j</sub></i> <i>r<sub>j</sub></i><sup>2</sup> = ∫ <i>r</i><sup>2</sup> <i>dm</i></span></div><div class="cap"><span class="m"><i>r<sub>j</sub></i></span> is the perpendicular distance from the axis, not from the origin.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Rotational kinetic energy</h4><button class="jump" data-goto="laws" type="button">section 03 →</button></div><div class="eq"><span class="m"><i>K</i> = <span class="frac"><span>1</span><span>2</span></span><i>I</i><span class="om">ω</span><sup>2</sup></span></div><div class="cap">Add <span class="m">½<i>MV</i><sup>2</sup></span> if the body also travels.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Work–energy theorem</h4><button class="jump" data-goto="laws" type="button">section 03 →</button></div><div class="eq"><span class="m"><i>W</i> = ∫<sub><i>θ</i>₁</sub><sup><i>θ</i>₂</sup> <span class="tv">τ</span> <i>dθ</i> = <span class="frac"><span>1</span><span>2</span></span><i>I</i><span class="om">ω</span><sub>2</sub><sup>2</sup> − <span class="frac"><span>1</span><span>2</span></span><i>I</i><span class="om">ω</span><sub>1</sub><sup>2</sup></span></div><div class="cap">Derived in full in section 03.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Rigid-body pendulum</h4><button class="jump" data-goto="pendulum" type="button">section 04 →</button></div><div class="eq"><span class="m"><i>I</i><i>θ̈</i> + <i>Mgl</i> sin <i>θ</i> = 0</span></div><div class="eq"><span class="m"><i>θ</i>(<i>t</i>) = <i>A</i> sin <span class="om">ω</span><i>t</i> + <i>B</i> cos <span class="om">ω</span><i>t</i>,&nbsp; <span class="om">ω</span> = √(<i>Mgl</i>/<i>I</i>)</span></div><div class="cap">The second line needs <span class="m">sin <i>θ</i> ≈ <i>θ</i></span>. <span class="m"><i>I</i></span> is about the pivot.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Angular velocity is a vector</h4><button class="jump" data-goto="rotations" type="button">section 05 →</button></div><div class="eq"><span class="m"><span class="vec om">ω</span> = <span class="frac"><span><i>d</i><span class="vec">θ</span></span><span><i>dt</i></span></span> = <span class="om">ω<sub>x</sub></span><span class="hatv">x</span> + <span class="om">ω<sub>y</sub></span><span class="hatv">y</span> + <span class="om">ω<sub>z</sub></span><span class="hatv">z</span></span></div><div class="cap">Valid because infinitesimal rotations commute. <span class="m"><span class="vec">θ</span></span> alone is <em>not</em> a vector.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Velocity of any point</h4><button class="jump" data-goto="cross" type="button">section 06 →</button></div><div class="eq"><span class="m"><span class="vec vv">v</span> = <span class="vec om">ω</span> × <span class="vec rv">r</span>,&nbsp;&nbsp; |<span class="vec vv">v</span>| = <span class="om">ω</span><i>r</i> sin <i>φ</i></span></div><div class="cap">Perpendicular to both; <span class="m"><i>r</i> sin <i>φ</i></span> is the circle's radius.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Rotation plus translation</h4><button class="jump" data-goto="rolling" type="button">section 08 →</button></div><div class="eq"><span class="m"><span class="lv"><i>L<sub>z</sub></i></span> = <i>I</i><sub>0</sub><span class="om">ω</span> + (<span class="vec">R</span> × <i>M</i><span class="vec vv">V</span>)<sub><i>z</i></sub></span></div><div class="eq"><span class="m"><span class="tv"><i>τ<sub>z</sub></i></span> = <span class="tv"><i>τ</i></span><sub>0</sub> + (<span class="vec">R</span> × <span class="vec">F</span>)<sub><i>z</i></sub></span></div><div class="cap">Spin about the CM plus orbit of the CM. Subscript 0 means "about the centre of mass".</div></div>
+    <div class="sheet-card"><div class="top"><h4>Rolling without slipping</h4><button class="jump" data-goto="rolling" type="button">section 08 →</button></div><div class="eq"><span class="m"><i>V</i> = <span class="om">ω</span><i>R</i>,&nbsp;&nbsp; <span class="lv"><i>L<sub>z</sub></i></span> = −<span class="frac"><span>3</span><span>2</span></span><i>MR</i><sup>2</sup><span class="om">ω</span></span></div><div class="cap">The second form is about the ground origin, for a uniform wheel.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Common moments of inertia</h4><button class="jump" data-goto="pendulum" type="button">section 04 →</button></div><div class="eq" style="font-size:16px;flex-direction:column;align-items:flex-start;gap:3px"><span class="m">point mass at <i>l</i>: &nbsp;<i>I</i> = <i>Ml</i><sup>2</sup></span><span class="m">rod about its end: &nbsp;<i>I</i> = <i>ML</i><sup>2</sup>/3</span><span class="m">disc about its centre: &nbsp;<i>I</i> = <i>MR</i><sup>2</sup>/2</span><span class="m">disc about its rim: &nbsp;<i>I</i> = 3<i>MR</i><sup>2</sup>/2</span></div><div class="cap">The last two differ by <span class="m"><i>MR</i><sup>2</sup></span> — the parallel-axis theorem.</div></div>
+  </div>
+
+  <div class="eq-card">
+    <h3>What every symbol means</h3>
+    <dl class="sym">
+      <dt><span class="vec om">ω</span></dt><dd>Angular velocity. Direction along the rotation axis by the right-hand rule, magnitude in rad/s.</dd>
+      <dt><i>I</i></dt><dd>Moment of inertia about the chosen axis — rotation's version of mass. Units kg·m².</dd>
+      <dt><span class="vec lv">L</span></dt><dd>Angular momentum about the chosen origin. Units kg·m²/s.</dd>
+      <dt><span class="vec tv">τ</span></dt><dd>Torque about the chosen origin, <span class="m"><span class="vec rv">r</span> × <span class="vec">F</span></span>. Units N·m.</dd>
+      <dt><span class="vec">α</span></dt><dd>Angular acceleration, <span class="m"><i>d</i><span class="vec om">ω</span>/<i>dt</i></span>. Units rad/s².</dd>
+      <dt><span class="vec rv">r</span></dt><dd>Position vector of a particle from the origin.</dd>
+      <dt><span class="vec">R</span></dt><dd>Position vector <em>of the centre of mass</em> from the origin.</dd>
+      <dt><span class="vec">r</span>′</dt><dd>Position of a particle measured <em>from the centre of mass</em>, so <span class="m"><span class="vec rv">r</span> = <span class="vec">R</span> + <span class="vec">r</span>′</span>.</dd>
+      <dt><span class="vec vv">V</span></dt><dd>Velocity of the centre of mass.</dd>
+      <dt><i>l</i></dt><dd>Distance from pivot to centre of mass, in the pendulum.</dd>
+      <dt><i>φ</i></dt><dd>Angle between <span class="m"><span class="vec om">ω</span></span> and <span class="m"><span class="vec rv">r</span></span>, so <span class="m"><i>r</i> sin <i>φ</i></span> is the distance to the axis.</dd>
+      <dt>subscript 0</dt><dd>"About the centre of mass" — <span class="m"><i>I</i><sub>0</sub></span>, <span class="m"><i>L</i><sub>0</sub></span>, <span class="m"><span class="tv"><i>τ</i></span><sub>0</sub></span>.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- ===================== 10. QUIZ ===================== -->
+<section class="sec" id="s-quiz" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Self-check</div>
+    <h2 class="sec-title">Twelve questions</h2>
+    <p class="lede">Mixed conceptual and numeric. Answer each one and the explanation opens — including why the tempting wrong answer is tempting.</p>
+  </div>
+  <div id="quizlist" style="display:flex;flex-direction:column;gap:14px"></div>
+  <div class="score" id="score">0 answered</div>
+</section>
+
+</div>
+</main>
+</div>
+
+<style>
+.det{display:inline-grid;grid-template-columns:repeat(3,auto);gap:3px 14px;align-items:center;justify-items:center;
+  border-left:1.6px solid currentColor;border-right:1.6px solid currentColor;padding:4px 10px;margin:0 .2em;vertical-align:middle}
+.rad{display:inline-flex;align-items:flex-start;gap:1px}
+.rad>span:last-child{border-top:1.2px solid currentColor;padding:1px .2em 0}
+.sec[hidden]{display:none !important}
+.eq .det>span{white-space:nowrap}
+</style>
+
+<script>
+(function(){
+"use strict";
+/* ============ small vector / matrix helpers ============ */
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const unit=a=>{const L=len(a)||1;return mul(a,1/L)};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const DEG=Math.PI/180;
+function matMul(A,B){const C=[[0,0,0],[0,0,0],[0,0,0]];for(let i=0;i<3;i++)for(let j=0;j<3;j++){let s=0;for(let k=0;k<3;k++)s+=A[i][k]*B[k][j];C[i][j]=s}return C}
+function matVec(A,v){return [A[0][0]*v[0]+A[0][1]*v[1]+A[0][2]*v[2],A[1][0]*v[0]+A[1][1]*v[1]+A[1][2]*v[2],A[2][0]*v[0]+A[2][1]*v[1]+A[2][2]*v[2]]}
+function rotAxis(ax,ang){const [x,y,z]=unit(ax),c=Math.cos(ang),s=Math.sin(ang),t=1-c;
+  return [[t*x*x+c,t*x*y-s*z,t*x*z+s*y],[t*x*y+s*z,t*y*y+c,t*y*z-s*x],[t*x*z-s*y,t*y*z+s*x,t*z*z+c]]}
+const matId=()=>[[1,0,0],[0,1,0],[0,0,1]];
+function matAngle(A){ // rotation angle of a rotation matrix
+  const tr=A[0][0]+A[1][1]+A[2][2];
+  return Math.acos(clamp((tr-1)/2,-1,1));
+}
+function matT(A){return [[A[0][0],A[1][0],A[2][0]],[A[0][1],A[1][1],A[2][1]],[A[0][2],A[1][2],A[2][2]]]}
+const fmt=(v,n)=>{const s=v.toFixed(n);return (Object.is(parseFloat(s),-0)||s==="-"+(0).toFixed(n))?(0).toFixed(n):s};
+
+/* ============ theme colours ============ */
+let CSS_CACHE={},cssStamp=0;
+function col(name){
+  if(!(name in CSS_CACHE)) CSS_CACHE[name]=getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim()||'#888';
+  return CSS_CACHE[name];
+}
+function flushColours(){CSS_CACHE={};cssStamp++;}
+try{ if(window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',flushColours);}catch(e){}
+new MutationObserver(flushColours).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ============ scene registry + 3D canvas ============ */
+const SCENES=[];
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function makeScene(section, canvasId, opt, renderFn){
+  const cv=document.getElementById(canvasId); if(!cv) return null;
+  const ctx=cv.getContext('2d');
+  const o=Object.assign({ratio:0.6,minH:260,maxH:460,yaw:38,pitch:22,dist:7,f:2.3,orbit:true,flat:false},opt);
+  const S={cv,ctx,section,yaw:o.yaw,pitch:o.pitch,dist:o.dist,f:o.f,W:600,H:360,t:0,playing:true,opt:o,data:{}};
+
+  function resize(){
+    const w=Math.max(220,cv.parentElement.clientWidth);
+    const h=clamp(Math.round(w*o.ratio),o.minH,o.maxH);
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+    cv.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    S.W=w;S.H=h;S.dirty=true;
+  }
+  S.resize=resize;
+  try{new ResizeObserver(resize).observe(cv.parentElement)}catch(e){window.addEventListener('resize',resize)}
+  resize();
+
+  if(o.orbit && !o.flat){
+    let dragging=false,lx=0,ly=0;
+    const down=e=>{dragging=true;const p=e.touches?e.touches[0]:e;lx=p.clientX;ly=p.clientY;cv.style.cursor='grabbing'};
+    const move=e=>{if(!dragging)return;const p=e.touches?e.touches[0]:e;
+      S.yaw-=(p.clientX-lx)*0.42;S.pitch=clamp(S.pitch+(p.clientY-ly)*0.35,-86,86);lx=p.clientX;ly=p.clientY;
+      if(e.cancelable&&e.touches)e.preventDefault();S.dirty=true};
+    const up=()=>{dragging=false;cv.style.cursor='grab'};
+    cv.style.cursor='grab';
+    cv.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+    cv.addEventListener('touchstart',down,{passive:true});cv.addEventListener('touchmove',move,{passive:false});
+    window.addEventListener('touchend',up);
+  }
+
+  // ---- projection ----
+  S.basis=function(){
+    const pr=S.pitch*DEG, yw=S.yaw*DEG;
+    const ez=[Math.cos(pr)*Math.cos(yw),Math.cos(pr)*Math.sin(yw),Math.sin(pr)];
+    let ex=cross([0,0,1],ez); if(len(ex)<1e-6) ex=[1,0,0]; ex=unit(ex);
+    const ey=cross(ez,ex);
+    return {ex,ey,ez};
+  };
+  S.project=function(p,B){
+    B=B||S.basis();
+    const depth=S.dist-dot(p,B.ez);
+    const k=(S.f*Math.min(S.W,S.H*1.5)/2)/Math.max(depth,0.25);
+    return {x:S.cx+dot(p,B.ex)*k, y:S.cy-dot(p,B.ey)*k, d:depth, k:k};
+  };
+
+  // ---- drawing helpers (2D screen space) ----
+  const g={};
+  g.clear=()=>{ctx.clearRect(0,0,S.W,S.H)};
+  g.line=(A,B2,st)=>{st=st||{};ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x,B2.y);ctx.stroke();ctx.restore()};
+  g.path=(pts,st)=>{st=st||{};if(pts.length<2)return;ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+    if(st.close)ctx.closePath(); if(st.fill){ctx.fillStyle=st.fill;ctx.fill()} if(st.color!=='none')ctx.stroke();ctx.restore()};
+  g.arrow=(A,B2,st)=>{st=st||{};const c=st.color||col('fg');const w=st.w||2.4;
+    const dx=B2.x-A.x,dy=B2.y-A.y,L=Math.hypot(dx,dy);if(L<0.5)return;
+    const hs=Math.max(7,Math.min(13,L*0.26)),ux=dx/L,uy=dy/L;
+    ctx.save();ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x-ux*hs*0.75,B2.y-uy*hs*0.75);ctx.stroke();
+    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(B2.x,B2.y);
+    ctx.lineTo(B2.x-ux*hs+(-uy)*hs*0.40,B2.y-uy*hs+(ux)*hs*0.40);
+    ctx.lineTo(B2.x-ux*hs-(-uy)*hs*0.40,B2.y-uy*hs-(ux)*hs*0.40);
+    ctx.closePath();ctx.fill();ctx.restore()};
+  g.dot=(P,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg');ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.arc(P.x,P.y,st.r||4,0,6.2832);ctx.fill();
+    if(st.ring){ctx.strokeStyle=st.ring;ctx.lineWidth=1.6;ctx.stroke()}ctx.restore()};
+  g.text=(P,s,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg-2');
+    ctx.font=(st.italic?'italic ':'')+(st.weight||600)+' '+(st.size||12)+'px '+(st.mono?"ui-monospace,Menlo,Consolas,monospace":"'Spline Sans',system-ui,sans-serif");
+    ctx.textAlign=st.align||'center';ctx.textBaseline=st.base||'middle';ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    if(st.halo){ctx.lineWidth=3.4;ctx.strokeStyle=col('surface');ctx.lineJoin='round';ctx.strokeText(s,P.x+(st.dx||0),P.y+(st.dy||0))}
+    ctx.fillText(s,P.x+(st.dx||0),P.y+(st.dy||0));ctx.restore()};
+  g.ring=(center,u,v,R,st,n,a0,a1)=>{ // 3D circle in plane spanned by u,v
+    n=n||72;a0=a0==null?0:a0;a1=a1==null?Math.PI*2:a1;const B=S.basis();const pts=[];
+    for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;pts.push(S.project(add(center,add(mul(u,R*Math.cos(a)),mul(v,R*Math.sin(a)))),B))}
+    g.path(pts,st)};
+  S.g=g;
+
+  S.render=renderFn;
+  SCENES.push(S);
+  return S;
+}
+
+/* ============ grid + axes helper ============ */
+function drawAxes(S,opt){
+  const g=S.g,B=S.basis(),o=Object.assign({size:2.2,grid:true,labels:['x','y','z'],gridN:4,plane:'xy'},opt||{});
+  const O=S.project([0,0,0],B);
+  if(o.grid){
+    const n=o.gridN,st={color:col('line'),w:1,alpha:.85};
+    for(let i=-n;i<=n;i++){
+      const f=i/n*o.size;
+      if(o.plane==='xy'){g.line(S.project([f,-o.size,0],B),S.project([f,o.size,0],B),st);g.line(S.project([-o.size,f,0],B),S.project([o.size,f,0],B),st)}
+      else{g.line(S.project([f,0,-o.size],B),S.project([f,0,o.size],B),st);g.line(S.project([-o.size,0,f],B),S.project([o.size,0,f],B),st)}
+    }
+  }
+  const L=o.size*1.12, ax=[[L,0,0],[0,L,0],[0,0,L]];
+  for(let i=0;i<3;i++){
+    if(o.labels[i]===null) continue;
+    const P=S.project(ax[i],B);
+    g.line(O,P,{color:col('fg-3'),w:1.3,alpha:.95});
+    g.text(P,o.labels[i],{color:col('fg-3'),size:12.5,dx:9,dy:-7,italic:true,halo:true});
+  }
+  return B;
+}
+
+/* ============ navigation ============ */
+const SECTIONS=[
+  {id:'analogy',  label:'Rotation vs translation'},
+  {id:'fixed-axis',label:'Fixed-axis rotation'},
+  {id:'laws',     label:'The dynamical formulas'},
+  {id:'pendulum', label:'Rigid-body pendulum'},
+  {id:'rotations',label:'Why θ is not a vector'},
+  {id:'cross',    label:'v = ω × r'},
+  {id:'vertical', label:'Worked example: 45°'},
+  {id:'rolling',  label:'Rolling wheel'},
+  {id:'sheet',    label:'Formula sheet'},
+  {id:'quiz',     label:'Self-check quiz'}
+];
+let current=SECTIONS[0].id;
+const navlist=document.getElementById('navlist'),tabscroll=document.getElementById('tabscroll');
+SECTIONS.forEach((s,i)=>{
+  const n=String(i+1).padStart(2,'0');
+  const li=document.createElement('li');
+  li.innerHTML='<button class="nav-link" type="button" data-goto="'+s.id+'"><span class="n">'+n+'</span><span>'+s.label+'</span></button>';
+  navlist.appendChild(li);
+  const b=document.createElement('button');
+  b.className='nav-link';b.type='button';b.dataset.goto=s.id;b.innerHTML='<span class="n">'+n+'</span><span>'+s.label+'</span>';
+  tabscroll.appendChild(b);
+});
+function show(id,push){
+  if(!SECTIONS.some(s=>s.id===id)) id=SECTIONS[0].id;
+  current=id;
+  SECTIONS.forEach(s=>{const el=document.getElementById('s-'+s.id); if(el) el.hidden = s.id!==id});
+  document.querySelectorAll('[data-goto]').forEach(b=>{if(b.classList.contains('nav-link'))b.setAttribute('aria-current',String(b.dataset.goto===id))});
+  if(push && location.hash.slice(1)!==id){try{location.hash=id}catch(e){}}
+  SCENES.forEach(S=>{if(S.section===id){S.resize();S.dirty=true}});
+  const act=tabscroll.querySelector('[data-goto="'+id+'"]'); if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'center'});
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-goto]'); if(!b)return;
+  show(b.dataset.goto,true);
+  if(!b.classList.contains('nav-link')) window.scrollTo({top:0,behavior:reduceMotion?'auto':'smooth'});
+});
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)||SECTIONS[0].id,false));
+
+/* ============ theme toggle ============ */
+const THEMES=['system','light','dark'];
+let ti=0;
+try{const st=localStorage.getItem('rbm-theme'); if(st&&THEMES.indexOf(st)>=0) ti=THEMES.indexOf(st)}catch(e){}
+function applyTheme(){
+  const t=THEMES[ti];
+  if(t==='system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',t);
+  const lbl='Theme: '+t;
+  const a=document.getElementById('themeBtn'),b=document.getElementById('themeBtn2');
+  if(a)a.textContent=lbl; if(b)b.textContent=t==='system'?'Theme':t;
+  try{localStorage.setItem('rbm-theme',t)}catch(e){}
+  flushColours();SCENES.forEach(S=>S.dirty=true);
+}
+['themeBtn','themeBtn2'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{ti=(ti+1)%3;applyTheme()})});
+applyTheme();
+
+/* ============ derivation steppers ============ */
+document.querySelectorAll('.deriv').forEach(d=>{
+  const items=Array.from(d.querySelectorAll('.deriv-steps li'));
+  let n=1;
+  const paint=()=>{items.forEach((li,i)=>li.dataset.off=i<n?'0':'1');
+    const nx=d.querySelector('[data-deriv-next]'),pv=d.querySelector('[data-deriv-prev]');
+    if(nx){nx.textContent=n>=items.length?'All steps shown':'Next step';nx.disabled=n>=items.length;nx.style.opacity=n>=items.length?.5:1}
+    if(pv){pv.disabled=n<=1;pv.style.opacity=n<=1?.5:1}};
+  d.querySelector('[data-deriv-next]')?.addEventListener('click',()=>{n=Math.min(items.length,n+1);paint()});
+  d.querySelector('[data-deriv-prev]')?.addEventListener('click',()=>{n=Math.max(1,n-1);paint()});
+  paint();
+});
+
+/* ============ slider wiring helper ============ */
+function bind(id,fn,fmtFn){
+  const el=document.getElementById(id),out=document.getElementById(id+'-v');
+  if(!el) return ()=>0;
+  const upd=()=>{const v=parseFloat(el.value); if(out&&fmtFn) out.textContent=fmtFn(v); fn&&fn(v); SCENES.forEach(S=>S.dirty=true)};
+  el.addEventListener('input',upd); upd();
+  return ()=>parseFloat(el.value);
+}
+function toggleGroup(attr,cb){
+  const btns=Array.from(document.querySelectorAll('[data-'+attr+']'));
+  btns.forEach(b=>b.addEventListener('click',()=>{
+    btns.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    cb(b.dataset[attr]); SCENES.forEach(S=>S.dirty=true);
+  }));
+  const init=btns.find(b=>b.getAttribute('aria-pressed')==='true')||btns[0];
+  if(init){btns.forEach(x=>x.setAttribute('aria-pressed',String(x===init)));cb(init.dataset[attr])}
+}
+function playBtn(id,getState,setState){
+  const el=document.getElementById(id); if(!el) return;
+  const paint=()=>{el.textContent=getState()?'Pause':'Play'};
+  el.addEventListener('click',()=>{setState(!getState());paint()});paint();
+}
+const txt=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v};
+
+/* ===================================================================
+   01 — ROTATION VS TRANSLATION
+   =================================================================== */
+(function(){
+  let eff=4, J=1, t=0, running=false;
+  const S=makeScene('analogy','cv-analogy',{flat:true,orbit:false,ratio:0.42,minH:210,maxH:300},function(dt){
+    const g=this.g,W=this.W,H=this.H;
+    if(running) t+=dt;
+    const a=eff/J, v=a*t, w=a*t, ang=0.5*a*t*t, x=0.5*a*t*t;
+    g.clear();
+    const midX=W/2, baseY=H*0.66;
+    g.line({x:midX,y:16},{x:midX,y:H-14},{color:col('line-soft'),w:1,dash:[4,4]});
+    g.text({x:W*0.25,y:20},'TRANSLATION',{size:10.5,color:col('fg-3'),weight:600});
+    g.text({x:W*0.75,y:20},'ROTATION',{size:10.5,color:col('fg-3'),weight:600});
+
+    // --- block on rail ---
+    const railL=W*0.06, railR=midX-W*0.05, span=railR-railL-34;
+    g.line({x:railL,y:baseY+15},{x:railR,y:baseY+15},{color:col('fg-3'),w:2});
+    for(let i=0;i<14;i++){const px=railL+ (i/13)*(railR-railL);g.line({x:px,y:baseY+15},{x:px-5,y:baseY+22},{color:col('line'),w:1.2})}
+    const bx=railL+((x*34)%(span||1));
+    this.ctx.save();this.ctx.fillStyle=col('surface-3');this.ctx.strokeStyle=col('fg-2');this.ctx.lineWidth=1.6;
+    this.ctx.beginPath();this.ctx.rect(bx,baseY-16,34,31);this.ctx.fill();this.ctx.stroke();this.ctx.restore();
+    g.text({x:bx+17,y:baseY-1},'m',{size:13,italic:true,color:col('fg')});
+    if(v>0.02) g.arrow({x:bx+34,y:baseY-30},{x:bx+34+Math.min(76,v*9),y:baseY-30},{color:col('vvec'),w:2.6});
+    g.text({x:bx+40,y:baseY-45},'v',{size:12.5,italic:true,color:col('vvec'),align:'left',halo:true});
+    if(running||t>0) {g.arrow({x:bx-46,y:baseY},{x:bx-8,y:baseY},{color:col('tau'),w:2.6});
+      g.text({x:bx-27,y:baseY-15},'F',{size:12.5,italic:true,color:col('tau'),halo:true});}
+
+    // --- disc ---
+    const cx=W*0.75, cy=baseY-4, R=Math.min(W*0.1,H*0.3);
+    this.ctx.save();
+    this.ctx.strokeStyle=col('fg-2');this.ctx.lineWidth=1.8;this.ctx.fillStyle=col('surface-3');
+    this.ctx.beginPath();this.ctx.arc(cx,cy,R,0,6.2832);this.ctx.fill();this.ctx.stroke();
+    this.ctx.restore();
+    for(let k=0;k<4;k++){const A=ang+k*Math.PI/2;
+      g.line({x:cx,y:cy},{x:cx+Math.cos(A)*R,y:cy-Math.sin(A)*R},{color:k===0?col('omega'):col('line'),w:k===0?2.4:1.3})}
+    g.dot({x:cx,y:cy},{r:3.5,color:col('fg-2')});
+    g.text({x:cx,y:cy+R+16},'I',{size:13,italic:true,color:col('fg')});
+    // curved omega arrow
+    if(Math.abs(w)>0.02){
+      const rr=R+13, a0=-0.5, a1=a0+Math.min(2.2,0.35+w*0.12);
+      const pts=[];for(let i=0;i<=24;i++){const A=a0+(a1-a0)*i/24;pts.push({x:cx+Math.cos(A)*rr,y:cy-Math.sin(A)*rr})}
+      g.path(pts,{color:col('omega'),w:2.4});
+      g.arrow(pts[22],pts[24],{color:col('omega'),w:2.4});
+      g.text({x:cx+Math.cos(a1)*(rr+13),y:cy-Math.sin(a1)*(rr+13)},'ω',{size:13.5,color:col('omega'),halo:true});
+    }
+    if(running||t>0){
+      const ta=-2.3,tb=ta-0.8,rr=R+13;const pts=[];
+      for(let i=0;i<=16;i++){const A=ta+(tb-ta)*i/16;pts.push({x:cx+Math.cos(A)*rr,y:cy-Math.sin(A)*rr})}
+      g.path(pts,{color:col('tau'),w:2.4});g.arrow(pts[14],pts[16],{color:col('tau'),w:2.4});
+      g.text({x:cx+Math.cos(tb)*(rr+14),y:cy-Math.sin(tb)*(rr+14)},'τ',{size:13.5,color:col('tau'),halo:true});
+    }
+    txt('an-v',fmt(v,2)+' m/s');txt('an-w',fmt(w,2)+' rad/s');
+    txt('an-p',fmt(J*v,2));txt('an-L',fmt(J*w,2));
+    txt('an-ke1',fmt(0.5*J*v*v,2)+' J');txt('an-ke2',fmt(0.5*J*w*w,2)+' J');
+  });
+  if(!S) return;
+  bind('an-eff',v=>eff=v,v=>v.toFixed(1));
+  bind('an-inertia',v=>J=v,v=>v.toFixed(1));
+  const pb=document.getElementById('an-play');
+  pb.addEventListener('click',()=>{running=!running;pb.textContent=running?'Hold':'Push';pb.classList.toggle('primary',running)});
+  document.getElementById('an-reset').addEventListener('click',()=>{t=0;running=false;pb.textContent='Push';pb.classList.remove('primary')});
+})();
+
+/* ===================================================================
+   02 — FIXED AXIS
+   =================================================================== */
+(function(){
+  let mode='straight', spin=0, trail=[];
+  const NOTES={
+    straight:'<strong>Driving straight.</strong> The wheel turns about the axle and nothing else. <span class="om">ω⃗</span> keeps one direction, so a single number <span class="m"><i>I</i></span> describes the whole body and <span class="m"><span class="tv">τ</span> = <i>I</i><span class="om">α</span></span> holds.',
+    turning:'<strong>Turning.</strong> The wheel now spins on the axle <em>and</em> rotates about a vertical axis. Add the two angular velocities as vectors — <span class="m"><span class="vec om">ω</span><sub>total</sub> = <span class="vec om">ω</span><sub>spin</sub> + <span class="vec om">ω</span><sub>turn</sub></span> — and the resultant axis sweeps around. <span class="m"><i>I</i></span> about a fixed axis no longer describes the motion.',
+    wobble:'<strong>Off the axle.</strong> The axis tumbles freely. <span class="m"><span class="vec lv">L</span></span> is conserved but is no longer parallel to <span class="m"><span class="vec om">ω</span></span>, so <span class="m"><i>I</i></span> must become the full inertia tensor. Everything else in this chapter assumes you are <em>not</em> in this case.'
+  };
+  const S=makeScene('fixed-axis','cv-fixed',{yaw:34,pitch:24,dist:6.6,f:2.0,ratio:0.56},function(dt){
+    const g=this.g;spin+=dt*2.4;this.t+=dt;
+    const t=this.t;
+    let n;
+    if(mode==='straight') n=[1,0,0];
+    else if(mode==='turning'){const p=t*0.55;n=unit([Math.cos(p),Math.sin(p),0.18])}
+    else {const th=0.95+0.55*Math.sin(t*1.25), ph=t*1.6; n=[Math.sin(th)*Math.cos(ph),Math.sin(th)*Math.sin(ph),Math.cos(th)]}
+    trail.push(n); if(trail.length>160) trail.shift();
+    this.cx=this.W/2;this.cy=this.H*0.55;
+    g.clear();
+    const B=drawAxes(this,{size:1.9,gridN:3,labels:['x','y','z']});
+    // wheel frame
+    let e1=cross(n,[0,0,1]); if(len(e1)<1e-5) e1=cross(n,[0,1,0]); e1=unit(e1);
+    const e2=cross(n,e1), R=1.15;
+    // axle
+    g.line(this.project(mul(n,-0.55),B),this.project(mul(n,0.55),B),{color:col('fg-2'),w:3.2});
+    // rim (two offset circles)
+    [-0.1,0.1].forEach(off=>g.ring(mul(n,off),e1,e2,R,{color:col('fg-2'),w:1.9},64));
+    // spokes
+    for(let k=0;k<8;k++){const a=spin+k*Math.PI/4;
+      g.line(this.project([0,0,0],B),this.project(add(mul(e1,R*Math.cos(a)),mul(e2,R*Math.sin(a))),B),{color:col('line'),w:1.3});}
+    // tread marker
+    const mk=add(mul(e1,R*Math.cos(spin)),mul(e2,R*Math.sin(spin)));
+    g.dot(this.project(mk,B),{r:4.5,color:col('vvec')});
+    // trail of axis directions
+    if(trail.length>2){const pts=trail.map(d=>this.project(mul(d,1.75),B));
+      for(let i=1;i<pts.length;i++) g.line(pts[i-1],pts[i],{color:col('omega'),w:1.6,alpha:0.1+0.5*i/pts.length});}
+    // omega arrow
+    g.arrow(this.project([0,0,0],B),this.project(mul(n,1.75),B),{color:col('omega'),w:3});
+    g.text(this.project(mul(n,2.0),B),'ω',{size:15,color:col('omega'),halo:true});
+    txt('fa-dir','('+fmt(n[0],2)+', '+fmt(n[1],2)+', '+fmt(n[2],2)+')');
+    txt('fa-ok',mode==='straight'?'yes':'no');
+    const okEl=document.getElementById('fa-ok'); if(okEl) okEl.style.color=mode==='straight'?col('ok'):col('tau');
+    txt('fa-valid',mode==='straight'?'τ = Iα, L = Iω':mode==='turning'?'needs ω⃗ addition':'needs the inertia tensor');
+  });
+  if(!S) return;
+  toggleGroup('fa',m=>{mode=m;trail=[];S.t=0;const nEl=document.getElementById('fa-note');
+    if(nEl){nEl.innerHTML=NOTES[m];nEl.className='note'+(m==='wobble'?' warn':'')}});
+})();
+
+/* ===================================================================
+   04 — RIGID BODY PENDULUM
+   =================================================================== */
+(function(){
+  const gAcc=9.81;
+  let body='point', a0=25*DEG, l=0.6, M=1, th=a0, thd=0, tt=0, running=!reduceMotion;
+  let hist=[], lastMaxT=null, truePeriod=null, prevThd=0;
+  function inertia(){ return body==='point'? M*l*l : body==='rod'? (4/3)*M*l*l : 1.5*M*l*l }
+  function omega(){ return Math.sqrt(M*gAcc*l/inertia()) }
+  function reset(){th=a0;thd=0;tt=0;hist=[];lastMaxT=null;truePeriod=null;prevThd=0}
+  function deriv(s){return [s[1], -(M*gAcc*l/inertia())*Math.sin(s[0])]}
+  function step(h){
+    let s=[th,thd];
+    const k1=deriv(s), k2=deriv([s[0]+h/2*k1[0],s[1]+h/2*k1[1]]),
+          k3=deriv([s[0]+h/2*k2[0],s[1]+h/2*k2[1]]), k4=deriv([s[0]+h*k3[0],s[1]+h*k3[1]]);
+    th+=h/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]); thd+=h/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]); tt+=h;
+    if(prevThd>0&&thd<=0){ if(lastMaxT!=null) truePeriod=tt-lastMaxT; lastMaxT=tt }
+    prevThd=thd;
+  }
+  const S=makeScene('pendulum','cv-pend',{flat:true,orbit:false,ratio:0.46,minH:250,maxH:340},function(dt){
+    const g=this.g,W=this.W,H=this.H;
+    if(running){const n=Math.max(1,Math.min(8,Math.round(dt/0.002)));const h=Math.min(dt,0.05)/n;for(let i=0;i<n;i++)step(h);}
+    hist.push([tt,th,a0*Math.cos(omega()*tt)]); if(hist.length>4000) hist.shift();
+    g.clear();
+    const splitX=Math.min(W*0.44,260);
+    // ---- pendulum ----
+    const px=splitX*0.5, py=H*0.16, scl=Math.min((H*0.72)/1.25,(splitX*0.42)/1.25);
+    g.line({x:px-34,y:py},{x:px+34,y:py},{color:col('fg-3'),w:2.4});
+    for(let i=0;i<7;i++)g.line({x:px-30+i*10,y:py},{x:px-36+i*10,y:py-7},{color:col('line'),w:1.2});
+    const dirx=Math.sin(th), diry=Math.cos(th);
+    const cmx=px+dirx*l*scl, cmy=py+diry*l*scl;
+    // ghost small-angle body
+    const ta=a0*Math.cos(omega()*tt);
+    g.line({x:px,y:py},{x:px+Math.sin(ta)*l*scl,y:py+Math.cos(ta)*l*scl},{color:col('omega'),w:2,alpha:.55,dash:[5,4]});
+    g.dot({x:px+Math.sin(ta)*l*scl,y:py+Math.cos(ta)*l*scl},{r:4,color:col('omega'),alpha:.6});
+    if(body==='point'){
+      g.line({x:px,y:py},{x:cmx,y:cmy},{color:col('fg-2'),w:2});
+      g.dot({x:cmx,y:cmy},{r:11,color:col('surface-3'),ring:col('fg')});
+    } else if(body==='rod'){
+      const ex=px+dirx*2*l*scl, ey=py+diry*2*l*scl;
+      this.ctx.save();this.ctx.strokeStyle=col('fg');this.ctx.lineWidth=9;this.ctx.lineCap='round';
+      this.ctx.beginPath();this.ctx.moveTo(px,py);this.ctx.lineTo(ex,ey);this.ctx.stroke();this.ctx.restore();
+    } else {
+      this.ctx.save();this.ctx.fillStyle=col('surface-3');this.ctx.strokeStyle=col('fg');this.ctx.lineWidth=2;
+      this.ctx.beginPath();this.ctx.arc(cmx,cmy,l*scl,0,6.2832);this.ctx.fill();this.ctx.stroke();this.ctx.restore();
+      g.line({x:cmx,y:cmy},{x:px,y:py},{color:col('line'),w:1.4});
+    }
+    g.line({x:px,y:py},{x:cmx,y:cmy},{color:col('rvec'),w:1.4,dash:[4,3]});
+    g.dot({x:cmx,y:cmy},{r:3.6,color:col('rvec')});
+    g.text({x:(px+cmx)/2,y:(py+cmy)/2},'l',{size:12.5,italic:true,color:col('rvec'),dx:-11,halo:true});
+    g.dot({x:px,y:py},{r:3.6,color:col('fg')});
+    // gravity components
+    const gl=Math.min(46,34+M*4);
+    g.arrow({x:cmx,y:cmy},{x:cmx,y:cmy+gl},{color:col('fg-3'),w:2});
+    g.text({x:cmx,y:cmy+gl+11},'Mg',{size:11.5,italic:true,color:col('fg-3'),halo:true});
+    const perp=[Math.cos(th),-Math.sin(th)];
+    const ps=gl*Math.sin(th);
+    g.arrow({x:cmx,y:cmy},{x:cmx+perp[0]*ps,y:cmy+perp[1]*ps},{color:col('tau'),w:2.2});
+    g.text({x:cmx+perp[0]*ps*1.4,y:cmy+perp[1]*ps*1.4-8},'Mg sinθ',{size:11,italic:true,color:col('tau'),halo:true});
+    // ---- graph ----
+    const gx0=splitX+14, gx1=W-10, gy0=26, gy1=H-24, gw=gx1-gx0, gh=gy1-gy0;
+    const span=Math.max(2.6,6.2832/omega()*2.6);
+    const t1=Math.max(span,tt), t0=t1-span;
+    const amp=Math.max(a0*1.12,0.1);
+    const Y=v=>gy0+gh/2-(v/amp)*(gh/2-6);
+    g.line({x:gx0,y:Y(0)},{x:gx1,y:Y(0)},{color:col('line'),w:1});
+    g.text({x:gx0,y:gy0-9},'θ (t)',{size:11,align:'left',color:col('fg-3'),italic:true});
+    g.text({x:gx1,y:gy0-9},'time →',{size:10.5,align:'right',color:col('fg-3')});
+    [a0,-a0].forEach(v=>{g.line({x:gx0,y:Y(v)},{x:gx1,y:Y(v)},{color:col('line-soft'),w:1,dash:[3,4]})});
+    g.text({x:gx0+2,y:Y(a0)-8},'θ₀',{size:10.5,align:'left',color:col('fg-3')});
+    const pA=[],pB=[];
+    for(let i=0;i<hist.length;i++){const hh=hist[i]; if(hh[0]<t0) continue;
+      const X=gx0+(hh[0]-t0)/span*gw; pA.push({x:X,y:Y(hh[1])}); pB.push({x:X,y:Y(hh[2])});}
+    g.path(pB,{color:col('omega'),w:1.8,alpha:.9});
+    g.path(pA,{color:col('fg'),w:2.1});
+    if(pA.length) g.dot(pA[pA.length-1],{r:3.6,color:col('fg')});
+    txt('pd-I',fmt(inertia(),3)+' kg·m²');
+    txt('pd-w',fmt(omega(),2)+' rad/s');
+    txt('pd-T',fmt(6.283185/omega(),3)+' s');
+    txt('pd-Tt',truePeriod?fmt(truePeriod,3)+' s':'measuring…');
+    if(truePeriod){const e=(truePeriod-6.283185/omega())/(6.283185/omega())*100;
+      txt('pd-err','+'+fmt(e,2)+' %');
+      const el=document.getElementById('pd-err'); if(el) el.style.color = e>5?col('tau'):e>1?col('warn'):col('ok');
+    } else txt('pd-err','—');
+  });
+  if(!S) return;
+  bind('pd-a0',v=>{a0=v*DEG;reset()},v=>Math.round(v)+'°');
+  bind('pd-l',v=>{l=v;reset()},v=>v.toFixed(2)+' m');
+  bind('pd-m',v=>{M=v;reset()},v=>v.toFixed(1)+' kg');
+  toggleGroup('pb',b=>{body=b;reset()});
+  playBtn('pd-play',()=>running,v=>running=v);
+  document.getElementById('pd-reset').addEventListener('click',reset);
+})();
+
+/* ===================================================================
+   05 — ROTATIONS DO NOT COMMUTE
+   =================================================================== */
+(function(){
+  const HX=0.78,HY=0.52,HZ=0.17;
+  const BV=[[-HX,-HY,-HZ],[HX,-HY,-HZ],[HX,HY,-HZ],[-HX,HY,-HZ],[-HX,-HY,HZ],[HX,-HY,HZ],[HX,HY,HZ],[-HX,HY,HZ]];
+  const BF=[{i:[4,5,6,7],k:'cover'},{i:[0,3,2,1],k:'back'},{i:[1,2,6,5]},{i:[0,4,7,3]},{i:[3,7,6,2]},{i:[0,1,5,4]}];
+  function drawBox(S,B,M,accent,letter,offset){
+    const g=S.g, verts=BV.map(v=>add(matVec(M,v),offset||[0,0,0]));
+    const proj=verts.map(v=>S.project(v,B));
+    const faces=BF.map(f=>{
+      const d=(proj[f.i[0]].d+proj[f.i[1]].d+proj[f.i[2]].d+proj[f.i[3]].d)/4;
+      return {f,d};
+    }).sort((a,b)=>b.d-a.d);
+    faces.forEach(({f})=>{
+      const pts=f.i.map(i=>proj[i]);
+      let fill=col('surface-2'),alpha=1;
+      if(f.k==='cover'){fill=accent;alpha=.92}
+      else if(f.k==='back'){fill=col('surface-3');alpha=1}
+      else {fill=col('surface-3');alpha=.72}
+      S.ctx.save();S.ctx.globalAlpha=alpha;
+      g.path(pts,{close:true,fill:fill,color:col('fg-2'),w:1.4});
+      S.ctx.restore();
+      if(f.k==='cover'){
+        const c={x:(pts[0].x+pts[2].x)/2,y:(pts[0].y+pts[2].y)/2};
+        const nrm=cross(sub(verts[f.i[1]],verts[f.i[0]]),sub(verts[f.i[3]],verts[f.i[0]]));
+        if(dot(nrm,B.ez)>0) g.text(c,letter,{size:20,weight:800,color:col('surface')});
+      }
+    });
+  }
+  let phi=90, mode='idle', clock=0;
+  function phase(t){ // returns [alpha,beta] fractions
+    if(t<0.9) return [t/0.9,0];
+    if(t<1.3) return [1,0];
+    if(t<2.3) return [1,(t-1.3)/1.0];
+    return [1,1];
+  }
+  const S=makeScene('rotations','cv-rot',{yaw:30,pitch:20,dist:5.6,f:1.45,ratio:0.52,minH:260,maxH:380},function(dt){
+    const g=this.g;
+    if(mode==='run'){clock+=dt; if(clock>3.4) {clock=3.4;}}
+    const [fa,fb]=phase(clock);
+    const a=phi*DEG*fa, b=phi*DEG*fb;
+    const MA=matMul(rotAxis([0,1,0],b),rotAxis([1,0,0],a));
+    const MB=matMul(rotAxis([1,0,0],b),rotAxis([0,1,0],a));
+    g.clear();
+    const half=this.W/2;
+    [[MA,col('vvec'),'order A — x, then y',0],[MB,col('lvec'),'order B — y, then x',1]].forEach(([M,acc,label,k])=>{
+      this.cx=half*0.5+half*k; this.cy=this.H*0.57;
+      const B=this.basis();
+      // mini axes
+      const O=this.project([0,0,0],B);
+      [[1.5,0,0,'x'],[0,1.5,0,'y'],[0,0,1.3,'z']].forEach(ax=>{
+        const P=this.project([ax[0],ax[1],ax[2]],B);
+        g.line(O,P,{color:col('line'),w:1.2});
+        g.text(P,ax[3],{size:11.5,color:col('fg-3'),italic:true,dx:8,dy:-6,halo:true});
+      });
+      drawBox(this,B,M,acc,k?'B':'A');
+      g.text({x:half*0.5+half*k,y:18},label.toUpperCase(),{size:10.5,color:acc,weight:600});
+      const stage = clock<0.9?'turning about x̂':clock<1.3?'paused':clock<2.3?'turning about ŷ':'done';
+      const stageB= clock<0.9?'turning about ŷ':clock<1.3?'paused':clock<2.3?'turning about x̂':'done';
+      g.text({x:half*0.5+half*k,y:this.H-12},mode==='run'?(k?stageB:stage):'press Run both',{size:11,color:col('fg-3'),weight:500});
+    });
+    g.line({x:half,y:26},{x:half,y:this.H-24},{color:col('line-soft'),w:1,dash:[4,5]});
+    const mis=matAngle(matMul(MA,matT(MB)))/DEG;
+    const misFull=matAngle(matMul(matMul(rotAxis([0,1,0],phi*DEG),rotAxis([1,0,0],phi*DEG)),
+                          matT(matMul(rotAxis([1,0,0],phi*DEG),rotAxis([0,1,0],phi*DEG)))))/DEG;
+    txt('rc-mis',fmt(misFull,2)+'°');
+    txt('rc-ratio',fmt(misFull/(phi*phi),5)+' /deg');
+    const v=misFull<0.25?'effectively commute':misFull<3?'almost commute':'do not commute';
+    txt('rc-verd',v);
+    const ve=document.getElementById('rc-verd'); if(ve) ve.style.color = misFull<0.25?col('ok'):misFull<3?col('warn'):col('tau');
+  });
+  if(!S) return;
+  bind('rc-ang',v=>phi=v,v=>Math.round(v)+'°');
+  document.getElementById('rc-play').addEventListener('click',()=>{mode='run';clock=0});
+  document.getElementById('rc-reset').addEventListener('click',()=>{mode='idle';clock=0});
+
+  makeScene('rotations','cv-rotplot',{flat:true,orbit:false,ratio:0.34,minH:180,maxH:240},function(){
+    const g=this.g,W=this.W,H=this.H;
+    g.clear();
+    const x0=52,x1=W-16,y0=20,y1=H-30,gw=x1-x0,gh=y1-y0;
+    const X=p=>x0+p/90*gw, Y=m=>y1-m/125*gh;
+    // grid
+    for(let m=0;m<=120;m+=30){g.line({x:x0,y:Y(m)},{x:x1,y:Y(m)},{color:col('line-soft'),w:1});
+      g.text({x:x0-7,y:Y(m)},m+'°',{size:10.5,align:'right',color:col('fg-3')})}
+    for(let p=0;p<=90;p+=15){g.line({x:X(p),y:y1},{x:X(p),y:y1+4},{color:col('line'),w:1});
+      g.text({x:X(p),y:y1+14},p+'°',{size:10.5,color:col('fg-3')})}
+    g.line({x:x0,y:y1},{x:x1,y:y1},{color:col('fg-3'),w:1.3});
+    g.text({x:x0,y:y0-8},'mismatch between the two orders',{size:10.5,align:'left',color:col('fg-3'),weight:600});
+    g.text({x:x1,y:y1+26},'rotation angle θ →',{size:10.5,align:'right',color:col('fg-3')});
+    const pts=[],ref=[];
+    const c=matAngle(matMul(matMul(rotAxis([0,1,0],90*DEG),rotAxis([1,0,0],90*DEG)),
+            matT(matMul(rotAxis([1,0,0],90*DEG),rotAxis([0,1,0],90*DEG)))))/DEG/(90*90);
+    for(let p=0;p<=90;p+=1){
+      const A=matMul(rotAxis([0,1,0],p*DEG),rotAxis([1,0,0],p*DEG));
+      const Bm=matMul(rotAxis([1,0,0],p*DEG),rotAxis([0,1,0],p*DEG));
+      pts.push({x:X(p),y:Y(matAngle(matMul(A,matT(Bm)))/DEG)});
+      ref.push({x:X(p),y:Y(c*p*p)});
+    }
+    g.path(ref,{color:col('fg-3'),w:1.4,dash:[4,4]});
+    g.path(pts,{color:col('omega'),w:2.4});
+    const cur=parseFloat((document.getElementById('rc-ang')||{value:90}).value);
+    const A=matMul(rotAxis([0,1,0],cur*DEG),rotAxis([1,0,0],cur*DEG));
+    const Bm=matMul(rotAxis([1,0,0],cur*DEG),rotAxis([0,1,0],cur*DEG));
+    const my=matAngle(matMul(A,matT(Bm)))/DEG;
+    g.line({x:X(cur),y:y0},{x:X(cur),y:y1},{color:col('vvec'),w:1.2,dash:[3,3]});
+    g.dot({x:X(cur),y:Y(my)},{r:5,color:col('vvec'),ring:col('surface')});
+    g.text({x:X(cur),y:Y(my)-15},fmt(my,1)+'°',{size:11,color:col('vvec'),halo:true,weight:600});
+    g.text({x:X(66),y:Y(c*66*66)+16},'θ² reference',{size:10.5,color:col('fg-3'),align:'left'});
+  });
+})();
+
+/* ===================================================================
+   06 — v = ω × r
+   =================================================================== */
+(function(){
+  let tilt=30,phiA=55,wmag=1,psi=0,running=!reduceMotion,view='free';
+  const S=makeScene('cross','cv-cross',{yaw:34,pitch:18,dist:6.2,f:2.1,ratio:0.58,minH:280,maxH:420},function(dt){
+    const g=this.g;
+    if(running) psi+=dt*wmag;
+    if(view==='top'){this.yaw=0;this.pitch=clamp(90-tilt,-86,86)}
+    else if(view==='side'){this.yaw=90;this.pitch=0}
+    this.cx=this.W/2;this.cy=this.H*0.55;
+    const n=[Math.sin(tilt*DEG),0,Math.cos(tilt*DEG)];
+    let e1=unit(cross(n,[0,1,0])), e2=cross(n,e1);
+    const Rr=1.55, ph=phiA*DEG;
+    const r=mul(add(mul(n,Math.cos(ph)),mul(add(mul(e1,Math.cos(psi)),mul(e2,Math.sin(psi))),Math.sin(ph))),Rr);
+    const w=mul(n,wmag);
+    const v=cross(w,r);
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:3});
+    // axis line
+    g.line(this.project(mul(n,-2.1),B),this.project(mul(n,2.1),B),{color:col('omega'),w:1.3,dash:[6,5],alpha:.8});
+    // circle of motion
+    const cen=mul(n,dot(r,n)), rad=len(sub(r,cen));
+    g.ring(cen,e1,e2,rad,{color:col('rvec'),w:1.6,alpha:.7},80);
+    // perpendicular from axis to particle
+    g.line(this.project(cen,B),this.project(r,B),{color:col('fg-3'),w:1.3,dash:[3,3]});
+    g.text(this.project(mul(add(cen,r),0.5),B),'r sin φ',{size:11,color:col('fg-3'),halo:true,italic:true,dy:-10});
+    // vectors
+    g.arrow(this.project([0,0,0],B),this.project(mul(n,1.75*Math.sign(wmag||1)),B),{color:col('omega'),w:3});
+    g.text(this.project(mul(n,2.0*Math.sign(wmag||1)),B),'ω',{size:15,color:col('omega'),halo:true});
+    g.arrow(this.project([0,0,0],B),this.project(r,B),{color:col('rvec'),w:2.8});
+    g.text(this.project(mul(r,1.13),B),'r',{size:15,color:col('rvec'),halo:true,italic:true});
+    const vs=len(v)>1e-4?mul(unit(v),Math.min(1.45,0.40+len(v)*0.34)):null;
+    if(vs){g.arrow(this.project(r,B),this.project(add(r,vs),B),{color:col('vvec'),w:3});
+      g.text(this.project(add(r,mul(vs,1.22)),B),'v',{size:15,color:col('vvec'),halo:true,italic:true});}
+    g.dot(this.project(r,B),{r:5,color:col('rvec'),ring:col('surface')});
+    g.dot(this.project([0,0,0],B),{r:3.4,color:col('fg-2')});
+    txt('cr-r',fmt(Rr,2)+' m');
+    txt('cr-rad',fmt(rad,2)+' m');
+    txt('cr-v',fmt(len(v),2)+' m/s');
+    txt('cr-dot1',fmt(dot(v,r),3));
+    txt('cr-dot2',fmt(dot(v,w),3));
+  });
+  if(!S) return;
+  bind('cr-tilt',v=>tilt=v,v=>Math.round(v)+'°');
+  bind('cr-phi',v=>phiA=v,v=>Math.round(v)+'°');
+  bind('cr-w',v=>wmag=v,v=>v.toFixed(1)+' rad/s');
+  toggleGroup('cvw',v=>{view=v; if(v==='free'){S.yaw=34;S.pitch=18}});
+  playBtn('cv-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   07 — WORKED EXAMPLE: VERTICAL PLANE
+   =================================================================== */
+(function(){
+  let theta=60*DEG, wmag=1, running=false, view='iso';
+  const sl=document.getElementById('vp-th');
+  const wh=unit([1,1,0]);                 // ω direction
+  const u=unit([-1,1,0]);                 // in-plane direction (2nd quadrant)
+  const S=makeScene('vertical','cv-vert',{yaw:32,pitch:20,dist:6.0,f:2.1,ratio:0.6,minH:290,maxH:430},function(dt){
+    const g=this.g;
+    if(running){ theta-=dt*wmag; // dθ/dt = −ω
+      while(theta<0) theta+=Math.PI*2; while(theta>Math.PI*2) theta-=Math.PI*2;
+      if(sl) sl.value=String(Math.round(theta/DEG)%360);
+      const o=document.getElementById('vp-th-v'); if(o) o.textContent=Math.round(theta/DEG)+'°';
+    }
+    if(view==='down'){this.yaw=45;this.pitch=0}
+    else if(view==='topv'){this.yaw=45;this.pitch=84}
+    this.cx=this.W/2;this.cy=this.H*0.55;
+    const Rr=1.5, st=Math.sin(theta), ct=Math.cos(theta);
+    const r=mul([-st/Math.SQRT2, st/Math.SQRT2, ct],Rr);
+    const w=mul(wh,wmag);
+    const v=cross(w,r);
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:4});
+    // 45 degree guide in XY plane
+    g.line(this.project([0,0,0],B),this.project(mul(wh,2.0),B),{color:col('omega'),w:1.2,dash:[5,4],alpha:.7});
+    g.ring([0,0,0],[1,0,0],[0,1,0],0.55,{color:col('omega'),w:1.3,alpha:.8},40,0,45*DEG);
+    g.text(this.project(mul(unit([Math.cos(22.5*DEG),Math.sin(22.5*DEG),0]),0.78),B),'45°',{size:11,color:col('omega'),halo:true});
+    // rotation circle: plane spanned by z and u
+    g.ring([0,0,0],[0,0,1],u,Rr,{color:col('rvec'),w:1.6,alpha:.65},90);
+    // projection of r onto XY
+    const rp=[r[0],r[1],0];
+    g.line(this.project(r,B),this.project(rp,B),{color:col('fg-3'),w:1.2,dash:[3,3]});
+    g.line(this.project([0,0,0],B),this.project(rp,B),{color:col('fg-3'),w:1.2,dash:[3,3]});
+    g.dot(this.project(rp,B),{r:3.2,color:col('fg-3')});
+    // theta arc from z axis
+    if(Math.abs(st)>0.02){
+      const ax=unit(sub(r,mul([0,0,1],dot(r,[0,0,1]))));
+      g.ring([0,0,0],[0,0,1],ax,0.62,{color:col('rvec'),w:1.3,alpha:.85},40,0,Math.min(theta,Math.PI*2));
+      const mid=theta/2;
+      g.text(this.project(add(mul([0,0,1],0.84*Math.cos(mid)),mul(ax,0.84*Math.sin(mid))),B),'θ',{size:13,color:col('rvec'),halo:true,italic:true});
+    }
+    g.arrow(this.project([0,0,0],B),this.project(mul(wh,1.85),B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(wh,2.1),B),'ω',{size:16,color:col('omega'),halo:true});
+    g.arrow(this.project([0,0,0],B),this.project(r,B),{color:col('rvec'),w:2.8});
+    g.text(this.project(mul(r,1.14),B),'r',{size:15,color:col('rvec'),halo:true,italic:true});
+    const vs=mul(v,1.0/Math.max(len(v),0.3)*1.1);
+    g.arrow(this.project(r,B),this.project(add(r,vs),B),{color:col('vvec'),w:3});
+    g.text(this.project(add(r,mul(vs,1.24)),B),'v',{size:15,color:col('vvec'),halo:true,italic:true});
+    g.dot(this.project(r,B),{r:5.5,color:col('rvec'),ring:col('surface')});
+    const un=mul(r,1/Rr), vn=len(v)>1e-6?mul(v,1/(wmag*Rr)):[0,0,0];
+    txt('vp-r','('+fmt(un[0],2)+', '+fmt(un[1],2)+', '+fmt(un[2],2)+')');
+    txt('vp-v','('+fmt(vn[0],2)+', '+fmt(vn[1],2)+', '+fmt(vn[2],2)+')');
+    txt('vp-thdot','−'+fmt(wmag,2)+' rad/s');
+    txt('vp-vm',fmt(len(v),2));
+    const q = Math.abs(r[0])<1e-3&&Math.abs(r[1])<1e-3 ? 'on the z axis'
+            : (r[0]<0&&r[1]>0)?'2nd quadrant':(r[0]>0&&r[1]<0)?'4th quadrant':'on an axis';
+    txt('vp-quad',q);
+  });
+  if(!S) return;
+  bind('vp-th',v=>{if(!running)theta=v*DEG},v=>Math.round(v)+'°');
+  bind('vp-w',v=>wmag=v,v=>v.toFixed(1)+' rad/s');
+  toggleGroup('vpv',v=>{view=v; if(v==='iso'){S.yaw=32;S.pitch=20}});
+  const b=document.getElementById('vp-play');
+  b.addEventListener('click',()=>{running=!running;b.textContent=running?'Pause':'Animate'});
+})();
+
+/* ===================================================================
+   08 — ROLLING WHEEL
+   =================================================================== */
+(function(){
+  let M=2,Rm=0.3,wm=4,about='ground',running=!reduceMotion,x=0,trace=[];
+  const S=makeScene('rolling','cv-roll',{flat:true,orbit:false,ratio:0.5,minH:280,maxH:380},function(dt){
+    const g=this.g,W=this.W,H=this.H,ctx=this.ctx;
+    const V=wm*Rm;
+    if(running) x+=dt*V;
+    g.clear();
+    const Rpx=Math.min(H*0.3,80), scale=Rpx/Rm;
+    const groundY=H*0.74, originX=W*0.17;
+    const span=W*0.62;
+    const cxw=originX+((x*scale)%span);
+    const ang=-x/Rm;
+    // ground
+    g.line({x:12,y:groundY},{x:W-12,y:groundY},{color:col('fg-3'),w:2});
+    for(let i=0;i<Math.floor((W-24)/13);i++) g.line({x:14+i*13,y:groundY},{x:9+i*13,y:groundY+7},{color:col('line'),w:1.1});
+    // cycloid trace of the marked rim point
+    trace.push([cxw+Math.sin(ang)*Rpx, groundY-Rpx-Math.cos(ang)*Rpx]);
+    if(trace.length>420) trace.shift();
+    const tp=trace.filter(p=>p[0]>originX-4&&p[0]<originX+span+4).map(p=>({x:p[0],y:p[1]}));
+    if(tp.length>2) g.path(tp,{color:col('vvec'),w:1.3,alpha:.4});
+    // wheel
+    const cyw=groundY-Rpx;
+    ctx.save();ctx.strokeStyle=col('fg');ctx.lineWidth=2.4;ctx.fillStyle=col('surface-2');
+    ctx.beginPath();ctx.arc(cxw,cyw,Rpx,0,6.2832);ctx.fill();ctx.stroke();ctx.restore();
+    for(let k=0;k<6;k++){const A=ang+k*Math.PI/3;
+      g.line({x:cxw,y:cyw},{x:cxw+Math.sin(A)*Rpx,y:cyw-Math.cos(A)*Rpx},{color:k===0?col('vvec'):col('line'),w:k===0?2.4:1.2})}
+    g.dot({x:cxw+Math.sin(ang)*Rpx,y:cyw-Math.cos(ang)*Rpx},{r:4.5,color:col('vvec')});
+    g.dot({x:cxw,y:cyw},{r:4,color:col('fg')});
+    // V arrow
+    g.arrow({x:cxw,y:cyw},{x:cxw+Math.min(70,22+V*22),y:cyw},{color:col('vvec'),w:2.6});
+    g.text({x:cxw+Math.min(70,22+V*22)+4,y:cyw-11},'V',{size:12.5,italic:true,color:col('vvec'),align:'left',halo:true});
+    // spin arrow (clockwise)
+    const rr=Rpx*0.62,pts=[];
+    for(let i=0;i<=22;i++){const A=-0.6-(i/22)*2.1;pts.push({x:cxw+Math.cos(A)*rr,y:cyw-Math.sin(A)*rr})}
+    g.path(pts,{color:col('omega'),w:2.2});g.arrow(pts[20],pts[22],{color:col('omega'),w:2.2});
+    g.text({x:cxw,y:cyw-rr-12},'ω into the page',{size:10.5,color:col('omega'),halo:true,weight:600});
+    // origin + R vector
+    const ox = about==='ground'? originX : cxw, oy = about==='ground'? groundY : cyw;
+    g.dot({x:ox,y:oy},{r:5,color:col('tau'),ring:col('surface')});
+    g.text({x:ox,y:oy+(about==='ground'?17:-16)},'origin',{size:10.5,color:col('tau'),weight:600,halo:true});
+    if(about==='ground'){
+      g.arrow({x:ox,y:oy},{x:cxw,y:cyw},{color:col('lvec'),w:2.2,alpha:.95});
+      g.text({x:(ox+cxw)/2,y:(oy+cyw)/2-10},'R',{size:12.5,italic:true,color:col('lvec'),halo:true});
+    }
+    // axes marker
+    g.arrow({x:W-58,y:H-18},{x:W-28,y:H-18},{color:col('fg-3'),w:1.6});
+    g.text({x:W-22,y:H-18},'x',{size:11,italic:true,color:col('fg-3'),align:'left'});
+    g.arrow({x:W-58,y:H-18},{x:W-58,y:H-44},{color:col('fg-3'),w:1.6});
+    g.text({x:W-58,y:H-52},'y',{size:11,italic:true,color:col('fg-3')});
+    // contribution bars
+    const I0=0.5*M*Rm*Rm, Ls=-I0*wm, Lo=about==='ground'?-M*Rm*V:0, Lt=Ls+Lo;
+    const bx=W*0.055,by=22,bw=Math.min(W*0.42,210),maxA=1.5*M*Rm*Rm*wm;
+    g.text({x:bx,y:by-10},'CONTRIBUTIONS TO L'+'ₓ',{size:10,align:'left',color:col('fg-3'),weight:600});
+    [['spin  I₀ω',Ls,col('lvec')],['orbital  (R⃗×MV⃗)'+'ₓ',Lo,col('omega')],['total',Lt,col('fg')]].forEach((row,i)=>{
+      const y=by+8+i*23;
+      g.text({x:bx,y:y},row[0],{size:10.5,align:'left',color:col('fg-2'),weight:500});
+      const w2=Math.abs(row[1])/maxA*bw;
+      ctx.save();ctx.fillStyle=row[2];ctx.globalAlpha=i===2?1:.8;
+      ctx.beginPath();ctx.rect(bx,y+6,Math.max(1,w2),7);ctx.fill();ctx.restore();
+      g.text({x:bx+Math.max(1,w2)+6,y:y+10},fmt(row[1],3),{size:10.5,align:'left',color:col('fg-3'),mono:true});
+    });
+    txt('rw-V',fmt(V,2)+' m/s');txt('rw-I',fmt(I0,3)+' kg·m²');
+    txt('rw-Ls',fmt(Ls,3));txt('rw-Lo',fmt(Lo,3));
+    txt('rw-Lt',fmt(Lt,3)+' kg·m²/s');
+    txt('rw-Lf',about==='ground'?'−3/2':'−1/2');
+  });
+  if(!S) return;
+  bind('rw-M',v=>M=v,v=>v.toFixed(1)+' kg');
+  bind('rw-R',v=>Rm=v,v=>v.toFixed(2)+' m');
+  bind('rw-w',v=>wm=v,v=>v.toFixed(1)+' rad/s');
+  toggleGroup('rwo',v=>about=v);
+  playBtn('rw-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   10 — QUIZ
+   =================================================================== */
+(function(){
+  const Q=[
+  {q:'Which pair are true translation ↔ rotation analogues?',
+   o:['Force and torque','Mass and angular momentum','Velocity and moment of inertia','Momentum and angular acceleration'],a:0,
+   e:'Force changes momentum; torque changes angular momentum. The full set is m↔I, p⃗↔L⃗, F⃗↔τ⃗, ½mv²↔½Iω².'},
+  {q:'A car drives straight ahead. Is the wheel on its axle undergoing fixed-axis rotation?',
+   o:['Yes — ω⃗ keeps one direction','No — the wheel also moves forward','Only if the car is not accelerating','Only if the wheel is uniform'],a:0,
+   e:'Fixed-axis means the <em>direction</em> of the rotation axis does not change. The wheel translating forward is fine — that is handled by the extra ½MV² and orbital-L terms. The moment the car turns, a second rotation about a vertical axis appears and the condition breaks.'},
+  {q:'Why can an angular <em>orientation</em> not be written as a vector θ⃗ = θ<sub>x</sub>x̂ + θ<sub>y</sub>ŷ + θ<sub>z</sub>ẑ?',
+   o:['Because finite rotations do not commute, while vector addition does','Because angles have no units','Because θ can exceed 2π','Because rotations are not linear in θ'],a:0,
+   e:'Vector addition is commutative by definition. Finite rotations are not: rotate a box 90° about x̂ then ŷ and you get a different orientation than the reverse order. No vector can represent something that depends on order.'},
+  {q:'Rotate a box 90° about x̂ then 90° about ŷ. Repeat in the opposite order. By what angle do the two final orientations differ?',
+   o:['120°','90°','45°','0° — they agree'],a:0,
+   e:'The relative rotation between the two results has trace 0, so its angle is arccos(−½) = 120°. Not a small discrepancy — the two boxes end up wildly different, which is the whole point of section 05.'},
+  {q:'As the rotation angle θ shrinks, the mismatch between the two orders falls off like…',
+   o:['θ²','θ','√θ','it stays constant'],a:0,
+   e:'Quadratically. That is exactly why <em>infinitesimal</em> rotations commute to first order, and therefore why ω⃗ = dθ⃗/dt is a genuine vector even though θ⃗ is not.'},
+  {q:'A point sits 2.0 m from the origin, at 30° to the rotation axis. The body spins at ω = 3.0 rad/s. What is |v⃗|?',
+   o:['3.0 m/s','6.0 m/s','5.2 m/s','1.5 m/s'],a:0,
+   e:'|v⃗| = ωr sin φ = 3.0 × 2.0 × sin 30° = 3.0 m/s. The point circles at radius r sin φ = 1.0 m, not at 2.0 m — the perpendicular distance to the axis is what matters.'},
+  {q:'For v⃗ = ω⃗ × r⃗, which statement is correct?',
+   o:['v⃗ is perpendicular to both ω⃗ and r⃗','v⃗ is parallel to r⃗','v⃗ is perpendicular to ω⃗ but parallel to r⃗','v⃗ lies in the plane of ω⃗ and r⃗'],a:0,
+   e:'Perpendicular to both, which is the same as saying it is tangential to the circle the point travels on. In section 06 both dot products stay pinned at 0.000 no matter what you drag.'},
+  {q:'A uniform rod of length L is pivoted at one end and swings as a pendulum. Its small-oscillation ω is…',
+   o:['√(3g / 2L)','√(g / L)','√(2g / 3L)','√(g / 2L)'],a:0,
+   e:'Here l = L/2 and I = ML²/3 about the pivot, so ω = √(Mgl/I) = √(Mg(L/2) ÷ ML²/3) = √(3g/2L). A rod swings faster than a simple pendulum of the same length because its mass sits closer in.'},
+  {q:'Release a physical pendulum from 90° instead of 5°. The true period compared with 2π√(I/Mgl) is…',
+   o:['Noticeably longer — about 18% longer','Exactly the same','Noticeably shorter','Longer only if the body is a disc'],a:0,
+   e:'The small-angle approximation sin θ ≈ θ overestimates the restoring torque at large angles, so the real swing is slower. Set the release angle to 90° in section 04 and read the measured period against the formula.'},
+  {q:'In the rigid-body pendulum, why does the Mg cos θ component of gravity contribute no torque?',
+   o:['It points along r⃗, and r⃗ × r⃗ = 0','It is cancelled by the pivot reaction','It is much smaller than Mg sin θ','It acts at the pivot, not the centre of mass'],a:0,
+   e:'Torque is r⃗ × F⃗, so any part of the force along r⃗ contributes nothing. Only Mg sin θ, perpendicular to the body, turns it — which is what puts the sin θ into Iθ̈ + Mgl sin θ = 0.'},
+  {q:'In the 45° worked example, dr⃗/dt and ω⃗ × r⃗ come out with every sign opposite. Why?',
+   o:['Because θ decreases with time, so dθ/dt = −ω','Because the determinant was expanded wrongly','Because ω⃗ has no z component','Because r⃗ is not a unit vector'],a:0,
+   e:'Both answers are right; the parametrisation just has not been told which way the body turns. The right-hand rule carries the particle toward the z axis, so θ shrinks and dθ/dt = −ω. Substitute that and the two routes agree exactly.'},
+  {q:'A uniform wheel, M = 2.0 kg, R = 0.30 m, rolls without slipping at ω = 4.0 rad/s. Its L<sub>z</sub> about an origin on the ground is…',
+   o:['−1.08 kg·m²/s','−0.36 kg·m²/s','−0.72 kg·m²/s','−2.16 kg·m²/s'],a:0,
+   e:'L<sub>z</sub> = −(3/2)MR²ω = −1.5 × 2.0 × 0.09 × 4.0 = −1.08 kg·m²/s. The −0.36 answer is the spin term alone and −0.72 is the orbital term alone; the orbital part is twice the spin part.'}
+  ];
+  const list=document.getElementById('quizlist'); if(!list) return;
+  let answered=0,right=0;
+  const LT='ABCD';
+  Q.forEach((q,i)=>{
+    const el=document.createElement('div');el.className='q';
+    el.innerHTML='<div class="qh"><span class="qn">'+String(i+1).padStart(2,'0')+'</span><span class="qt">'+q.q+'</span></div>'+
+      '<div class="opts"></div><div class="expl" hidden></div>';
+    const opts=el.querySelector('.opts'), expl=el.querySelector('.expl');
+    expl.innerHTML=q.e;
+    const order=q.o.map((text,k)=>({text,k}));
+    for(let j=order.length-1;j>0;j--){const k=(i*7+j*13)%(j+1);const tmp=order[j];order[j]=order[k];order[k]=tmp}
+    order.forEach((o,j)=>{
+      const b=document.createElement('button');b.className='opt';b.type='button';
+      b.innerHTML='<span class="mk">'+LT[j]+'</span><span>'+o.text+'</span>';
+      b.addEventListener('click',()=>{
+        if(el.dataset.done) return; el.dataset.done='1';
+        const correct=o.k===q.a; answered++; if(correct) right++;
+        Array.from(opts.children).forEach((c,ci)=>{
+          c.disabled=true;
+          if(order[ci].k===q.a) c.dataset.state='right';
+          else if(c===b) c.dataset.state='wrong';
+        });
+        expl.hidden=false;
+        const s=document.getElementById('score');
+        if(s) s.textContent=right+' / '+answered+' correct'+(answered===Q.length?'  ·  all done':'');
+      });
+      opts.appendChild(b);
+    });
+    list.appendChild(el);
+  });
+  const s=document.getElementById('score'); if(s) s.textContent='0 of '+Q.length+' answered';
+})();
+
+/* ===================================================================
+   MAIN LOOP
+   =================================================================== */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  for(let i=0;i<SCENES.length;i++){
+    const S=SCENES[i];
+    if(S.section!==current) continue;
+    if(S.cx==null){S.cx=S.W/2;S.cy=S.H/2}
+    try{S.render.call(S,dt)}catch(e){ if(!S._err){console.error('scene',S.cv.id,e);S._err=1} }
+  }
+  requestAnimationFrame(frame);
+}
+show(location.hash.slice(1)||SECTIONS[0].id,false);
+requestAnimationFrame(frame);
+window.addEventListener('load',()=>{SCENES.forEach(S=>S.resize())});
+})();
+</script>
+
+</body>
+</html>
