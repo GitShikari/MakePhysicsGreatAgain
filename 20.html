@@ -1,0 +1,1348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  html,body{margin:0}
+  body{font:14px system-ui,-apple-system,sans-serif}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>Rigid Body in Motion · Lecture 20 (Inertia Tensor)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&family=Spline+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F2F7; --surface:#FFFFFF; --surface-2:#E7E9F0; --surface-3:#DCDFE9;
+  --fg:#14161D; --fg-2:#545A69; --fg-3:#838A9A;
+  --line:#D3D7E2; --line-soft:#E3E6EE;
+  --omega:#A96E05; --rvec:#0C7A68; --vvec:#2A4FC8; --lvec:#96298A; --tau:#BC2033;
+  --ok:#14785C; --warn:#9E6300;
+  --shadow:0 1px 2px rgba(20,22,29,.06), 0 8px 24px -12px rgba(20,22,29,.18);
+  --font-display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --font-body:'Spline Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-math:'Crimson Pro',Georgia,'Times New Roman',serif;
+  --font-data:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --rail:262px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--surface)}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100%}
+.rail{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;height:calc(100vh - env(safe-area-inset-top,0px));overflow-y:auto;background:var(--surface);border-right:1px solid var(--line);
+  padding-block:22px 28px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:14px;display:flex;flex-direction:column;gap:18px}
+.rail-head{display:flex;flex-direction:column;gap:3px}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.rail-title{font-family:var(--font-display);font-weight:800;font-size:20px;line-height:1.15;letter-spacing:-.015em;text-wrap:balance}
+nav ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.nav-link{display:grid;grid-template-columns:22px 1fr;gap:9px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:7px 9px;cursor:pointer;color:var(--fg-2);font-family:inherit;font-size:13.5px;line-height:1.3}
+.nav-link .n{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);font-variant-numeric:tabular-nums}
+.nav-link:hover{background:var(--surface-2);color:var(--fg)}
+.nav-link[aria-current="true"]{background:var(--surface-2);color:var(--fg);font-weight:600}
+.nav-link[aria-current="true"] .n{color:var(--omega)}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:9px;font-size:11.5px;color:var(--fg-3);line-height:1.45}
+.theme-btn{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);color:var(--fg-2);border-radius:999px;padding:4px 11px;font:inherit;font-size:11.5px;cursor:pointer}
+.theme-btn:hover{color:var(--fg);border-color:var(--fg-3)}
+
+.main{min-width:0;padding-block:30px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto}
+
+/* mobile tab bar */
+.tabbar{display:none}
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .tabbar{display:block;position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+  .tabbar-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:9px 4px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .tabbar-top .rail-title{font-size:16px}
+  .tabscroll{display:flex;gap:4px;overflow-x:auto;padding-block:0 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scrollbar-width:none}
+  .tabscroll::-webkit-scrollbar{display:none}
+  .tabscroll .nav-link{display:block;white-space:nowrap;border:1px solid var(--line);padding:5px 11px;font-size:12.5px}
+  .tabscroll .nav-link .n{display:none}
+}
+
+/* ---------- type ---------- */
+h2.sec-title{font-family:var(--font-display);font-weight:800;font-size:clamp(26px,4.2vw,38px);line-height:1.06;letter-spacing:-.025em;margin:0;text-wrap:balance}
+h3{font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h4{font-family:var(--font-body);font-weight:600;font-size:13px;letter-spacing:.02em;margin:0;color:var(--fg-2)}
+p{margin:0}
+.lede{font-size:16.5px;color:var(--fg-2);max-width:62ch;line-height:1.62}
+.sec{display:flex;flex-direction:column;gap:24px}
+.sec-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line-soft);padding-bottom:20px}
+.slide-tag{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);letter-spacing:.04em}
+.prose{display:flex;flex-direction:column;gap:12px;max-width:66ch}
+.prose p{color:var(--fg-2)}
+ul.bul{margin:0;padding-left:18px;color:var(--fg-2);display:flex;flex-direction:column;gap:5px}
+
+/* ---------- math ---------- */
+.m{font-family:var(--font-math);font-size:1.12em;line-height:1.35;font-feature-settings:"lnum"}
+.m i,.var{font-style:italic}
+.eq{font-family:var(--font-math);font-size:clamp(18px,2.6vw,22px);line-height:1.5;display:flex;flex-wrap:wrap;align-items:center;gap:.12em;min-width:0}
+.eq.big{font-size:clamp(21px,3.2vw,27px)}
+.vec,.hatv{position:relative;display:inline-block;font-style:italic}
+.vec::after{content:"→";position:absolute;left:-.04em;right:0;top:-.62em;font-size:.56em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.hatv::after{content:"^";position:absolute;left:0;right:0;top:-.44em;font-size:.72em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.frac{display:inline-flex;flex-direction:column;vertical-align:-.46em;text-align:center;margin:0 .14em;font-size:.86em}
+.frac>span{padding:0 .22em;display:block}
+.frac>span:last-child{border-top:1.3px solid currentColor;margin-top:1px}
+sub,sup{font-size:.62em;font-style:normal}
+.om{color:var(--omega)} .rv{color:var(--rvec)} .vv{color:var(--vvec)} .lv{color:var(--lvec)} .tv{color:var(--tau)}
+.eq-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.eq-card .cap{font-size:12.5px;color:var(--fg-3);line-height:1.5}
+.eq-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+
+/* matrices & determinants */
+.det,.mat3,.vec3{display:inline-grid;align-items:center;justify-items:center;padding:4px 10px;margin:0 .22em;vertical-align:middle;font-family:var(--font-math)}
+.det{grid-template-columns:repeat(3,auto);gap:3px 14px;border-left:1.6px solid currentColor;border-right:1.6px solid currentColor}
+.mat3{grid-template-columns:repeat(3,auto);gap:4px 14px;border-left:1.8px solid currentColor;border-right:1.8px solid currentColor;border-radius:6px}
+.vec3{grid-template-columns:auto;gap:4px 6px;border-left:1.8px solid currentColor;border-right:1.8px solid currentColor;border-radius:6px}
+
+/* ---------- panels / viz ---------- */
+.viz{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.viz-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
+.viz-head h3{font-size:14px}
+.stage{position:relative;background:var(--surface);min-width:0}
+canvas{display:block;width:100%;height:auto;touch-action:pan-y}
+.hint{position:absolute;right:9px;bottom:7px;font-size:10.5px;color:var(--fg-3);background:color-mix(in srgb,var(--surface) 82%,transparent);padding:2px 7px;border-radius:5px;pointer-events:none}
+.controls{display:grid;gap:13px 20px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));padding:14px 15px;border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ctl label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ctl label .val{font-family:var(--font-data);font-size:11.5px;color:var(--fg);text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--omega);height:20px;margin:0}
+.btn{background:var(--surface);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--fg-3)}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px}
+.readout{display:grid;gap:10px 18px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));padding:13px 15px;border-top:1px solid var(--line-soft)}
+.ro{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ro .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.ro .v{font-family:var(--font-data);font-size:14px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--fg-2)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:16px;height:3px;border-radius:2px;display:inline-block;flex:none}
+
+/* ---------- derivation stepper ---------- */
+.deriv{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.deriv-steps{list-style:none;margin:0;padding:0}
+.deriv-steps li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;padding:15px 17px;border-top:1px solid var(--line-soft);transition:opacity .25s,filter .25s}
+.deriv-steps li:first-child{border-top:0}
+.deriv-steps li[data-off="1"]{opacity:.28;filter:saturate(.25)}
+.deriv-steps .sn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:6px;font-variant-numeric:tabular-nums}
+.deriv-body{display:flex;flex-direction:column;gap:7px;min-width:0}
+.deriv-body .why{font-size:13px;color:var(--fg-2);line-height:1.52}
+.scrollx{overflow-x:auto;max-width:100%}
+
+/* ---------- misc blocks ---------- */
+.note{border-left:3px solid var(--omega);background:var(--surface);padding:13px 16px;border-radius:0 10px 10px 0;font-size:13.5px;color:var(--fg-2);line-height:1.56}
+.note strong{color:var(--fg)}
+.note.warn{border-left-color:var(--tau)}
+.note.ok{border-left-color:var(--ok)}
+table.cmp{width:100%;border-collapse:collapse;font-size:14px}
+table.cmp th,table.cmp td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+table.cmp thead th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+table.cmp tbody th{font-weight:500;color:var(--fg-2);font-size:13px}
+
+/* ---------- quiz ---------- */
+.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:11px;box-shadow:var(--shadow)}
+.q .qh{display:flex;gap:10px;align-items:baseline}
+.q .qn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);flex:none}
+.q .qt{font-size:15px;line-height:1.5}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;text-align:left;background:var(--surface-2);border:1px solid transparent;border-radius:9px;padding:9px 12px;font:inherit;font-size:14px;color:var(--fg);cursor:pointer;line-height:1.45}
+.opt:hover:not(:disabled){border-color:var(--fg-3)}
+.opt .mk{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:3px;flex:none}
+.opt[data-state="right"]{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface-2))}
+.opt[data-state="wrong"]{border-color:var(--tau);background:color-mix(in srgb,var(--tau) 12%,var(--surface-2))}
+.opt:disabled{cursor:default}
+.expl{font-size:13px;color:var(--fg-2);line-height:1.56;border-left:2px solid var(--line);padding-left:11px}
+.score{position:sticky;bottom:12px;align-self:center;background:var(--fg);color:var(--bg);border-radius:999px;padding:7px 18px;font-size:13px;font-weight:600;box-shadow:var(--shadow);font-variant-numeric:tabular-nums}
+
+/* ---------- formula sheet ---------- */
+.sheet{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.sheet-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 17px;display:flex;flex-direction:column;gap:9px}
+.sheet-card .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sheet-card h4{font-size:12px}
+.jump{background:none;border:0;color:var(--vvec);font:inherit;font-size:11.5px;cursor:pointer;padding:0;white-space:nowrap}
+.jump:hover{text-decoration:underline}
+dl.sym{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;margin:0;font-size:13.5px;align-items:baseline}
+dl.sym dt{font-family:var(--font-math);font-size:16px;color:var(--fg)}
+dl.sym dd{margin:0;color:var(--fg-2)}
+
+.sec[hidden]{display:none !important}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+:focus-visible{outline:2px solid var(--vvec);outline-offset:2px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="rail">
+  <div class="rail-head">
+    <div class="eyebrow">Chapter 4 · Lecture 20</div>
+    <div class="rail-title">Inertia Tensor &amp; Principal Axes</div>
+  </div>
+  <nav><ol id="navlist"></ol></nav>
+  <div class="rail-foot">
+    <button class="theme-btn" id="themeBtn" type="button">Theme: system</button>
+    <div>Drag any 3D view to orbit it. Every coloured term in an equation matches the colour of its vector arrow.</div>
+  </div>
+</aside>
+
+<main class="main">
+<div class="tabbar">
+  <div class="tabbar-top">
+    <div class="rail-title">Rigid Body · Lecture 20</div>
+    <button class="theme-btn" id="themeBtn2" type="button">Theme</button>
+  </div>
+  <div class="tabscroll" id="tabscroll"></div>
+</div>
+<div class="wrap">
+
+<!-- ===================== 1. 3D VECTOR TRIPLE PRODUCT (SLIDES 3-5) ===================== -->
+<section class="sec" id="s-triple" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 3–5</div>
+    <h2 class="sec-title">Expanding <span class="m"><span class="vec lv">L</span> = Σ <span class="vec rv">r</span><sub><i>j</i></sub> × <i>m<sub>j</sub></i>(<span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub>)</span></h2>
+    <p class="lede">When a rigid body rotates with an arbitrary 3D angular velocity <span class="m"><span class="vec om">ω</span> = <span class="om">ω<sub>x</sub></span><span class="hatv">x</span> + <span class="om">ω<sub>y</sub></span><span class="hatv">y</span> + <span class="om">ω<sub>z</sub></span><span class="hatv">z</span></span>, expanding the double cross product reveals why <span class="m"><span class="lv"><i>L<sub>x</sub></i></span></span> depends on all three components of <span class="m"><span class="vec om">ω</span></span>.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Double cross-product geometry for particle <span class="m"><i>j</i></span></h3>
+      <div class="btnrow">
+        <button class="btn" data-trv="iso" aria-pressed="true" type="button">3D Perspective</button>
+        <button class="btn" data-trv="plane" type="button">Plane of ω &amp; r_j</button>
+        <button class="btn primary" id="tr-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-triple"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="tr-wx">Spin <span class="m"><span class="om">ω<sub>x</sub></span></span> <span class="val" id="tr-wx-v">0.8 rad/s</span></label><input type="range" id="tr-wx" min="-2.0" max="2.0" step="0.1" value="0.8"></div>
+      <div class="ctl"><label for="tr-wy">Spin <span class="m"><span class="om">ω<sub>y</sub></span></span> <span class="val" id="tr-wy-v">0.6 rad/s</span></label><input type="range" id="tr-wy" min="-2.0" max="2.0" step="0.1" value="0.6"></div>
+      <div class="ctl"><label for="tr-wz">Spin <span class="m"><span class="om">ω<sub>z</sub></span></span> <span class="val" id="tr-wz-v">1.4 rad/s</span></label><input type="range" id="tr-wz" min="0.2" max="2.5" step="0.1" value="1.4"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">I_xx = m(y² + z²)</div><div class="v" id="tr-ixx">2.00 kg·m²</div></div>
+      <div class="ro"><div class="k">I_xy = −m x y</div><div class="v tv" id="tr-ixy">−0.80 kg·m²</div></div>
+      <div class="ro"><div class="k">I_xz = −m x z</div><div class="v tv" id="tr-ixz">−1.00 kg·m²</div></div>
+      <div class="ro"><div class="k">L_x = I_xx ω_x + I_xy ω_y + I_xz ω_z</div><div class="v lv" id="tr-lx">−0.28</div></div>
+    </div>
+  </div>
+
+  <div class="deriv" id="d-triple">
+    <div class="viz-head"><h3>Step-by-step determinant expansion (Slides 3–5)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-triple" type="button">Back</button><button class="btn primary" data-deriv-next="d-triple" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec vv">p</span><sub><i>j</i></sub> = <i>m<sub>j</sub></i><span class="frac"><span><i>d</i><span class="vec rv">r</span><sub><i>j</i></sub></span><span><i>dt</i></span></span> = <i>m<sub>j</sub></i>(<span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub>)&nbsp;&nbsp;⟹&nbsp;&nbsp;<span class="vec lv">L</span> = Σ<sub><i>j</i>=1</sub><sup><i>N</i></sup> <span style="font-size:1.25em">[</span><span class="vec rv">r</span><sub><i>j</i></sub> × <i>m<sub>j</sub></i>(<span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub>)<span style="font-size:1.25em">]</span></span></div><div class="why">Every particle <span class="m"><i>j</i></span> has velocity <span class="m"><span class="vec vv">v</span><sub><i>j</i></sub> = <span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub></span>, where <span class="m"><span class="vec om">ω</span> = <span class="om">ω<sub>x</sub></span><span class="hatv">x</span> + <span class="om">ω<sub>y</sub></span><span class="hatv">y</span> + <span class="om">ω<sub>z</sub></span><span class="hatv">z</span></span>.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="scrollx"><div class="eq"><span class="m"><span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub> = </span><span class="det m"><span class="hatv">x</span><span class="hatv">y</span><span class="hatv">z</span><span class="om">ω<sub>x</sub></span><span class="om">ω<sub>y</sub></span><span class="om">ω<sub>z</sub></span><span><i>x<sub>j</sub></i></span><span><i>y<sub>j</sub></i></span><span><i>z<sub>j</sub></i></span></span><span class="m"> = (<span class="om">ω<sub>y</sub></span><i>z<sub>j</sub></i> − <i>y<sub>j</sub></i><span class="om">ω<sub>z</sub></span>)<span class="hatv">x</span> − (<span class="om">ω<sub>x</sub></span><i>z<sub>j</sub></i> − <i>x<sub>j</sub></i><span class="om">ω<sub>z</sub></span>)<span class="hatv">y</span> + (<span class="om">ω<sub>x</sub></span><i>y<sub>j</sub></i> − <i>x<sub>j</sub></i><span class="om">ω<sub>y</sub></span>)<span class="hatv">z</span></span></div></div><div class="why">First evaluate the inner cross product <span class="m"><span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub></span> using the 3×3 determinant on Slide 3.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="scrollx"><div class="eq"><span class="m"><span class="vec rv">r</span><sub><i>j</i></sub> × <i>m<sub>j</sub></i>(<span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub>) = </span><span class="det m"><span class="hatv">x</span><span class="hatv">y</span><span class="hatv">z</span><span><i>x<sub>j</sub></i></span><span><i>y<sub>j</sub></i></span><span><i>z<sub>j</sub></i></span><span><i>m<sub>j</sub></i>(<span class="om">ω<sub>y</sub></span><i>z<sub>j</sub></i>−<i>y<sub>j</sub></i><span class="om">ω<sub>z</sub></span>)</span><span>−<i>m<sub>j</sub></i>(<span class="om">ω<sub>x</sub></span><i>z<sub>j</sub></i>−<i>x<sub>j</sub></i><span class="om">ω<sub>z</sub></span>)</span><span><i>m<sub>j</sub></i>(<span class="om">ω<sub>x</sub></span><i>y<sub>j</sub></i>−<i>x<sub>j</sub></i><span class="om">ω<sub>y</sub></span>)</span></span></div></div><div class="why">Now cross <span class="m"><span class="vec rv">r</span><sub><i>j</i></sub></span> into <span class="m"><i>m<sub>j</sub></i>(<span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub>)</span> (Slide 4 top determinant) and collect coefficients of <span class="m"><span class="om">ω<sub>x</sub></span>, <span class="om">ω<sub>y</sub></span>, <span class="om">ω<sub>z</sub></span></span> in the <span class="m"><span class="hatv">x</span></span> component.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq"><span class="m"><span class="lv"><i>L<sub>x</sub></i></span> = Σ<sub><i>j</i>=1</sub><sup><i>N</i></sup> <span style="font-size:1.25em">[</span><i>m<sub>j</sub></i>(<i>y<sub>j</sub></i><sup>2</sup> + <i>z<sub>j</sub></i><sup>2</sup>)<span class="om">ω<sub>x</sub></span> − <i>m<sub>j</sub></i><i>x<sub>j</sub></i><i>y<sub>j</sub></i><span class="om">ω<sub>y</sub></span> − <i>m<sub>j</sub></i><i>x<sub>j</sub></i><i>z<sub>j</sub></i><span class="om">ω<sub>z</sub></span><span style="font-size:1.25em">]</span></span></div><div class="why">Notice that <span class="m"><span class="lv"><i>L<sub>x</sub></i></span></span> receives contributions not only from <span class="m"><span class="om">ω<sub>x</sub></span></span>, but also from <span class="m"><span class="om">ω<sub>y</sub></span></span> and <span class="m"><span class="om">ω<sub>z</sub></span></span>!</div></div></li>
+      <li><div class="sn">05</div><div class="deriv-body"><div class="eq big"><span class="m"><span class="lv"><i>L<sub>x</sub></i></span> = <i>I<sub>xx</sub></i><span class="om">ω<sub>x</sub></span> + <i>I<sub>xy</sub></i><span class="om">ω<sub>y</sub></span> + <i>I<sub>xz</sub></i><span class="om">ω<sub>z</sub></span></span></div><div class="why"><strong>Slide 5 definition:</strong> Introduce the diagonal moment of inertia <span class="m"><i>I<sub>xx</sub></i> = Σ <i>m<sub>j</sub></i>(<i>y<sub>j</sub></i><sup>2</sup> + <i>z<sub>j</sub></i><sup>2</sup>)</span> and the off-diagonal products of inertia <span class="m"><i>I<sub>xy</sub></i> = −Σ <i>m<sub>j</sub></i><i>x<sub>j</sub></i><i>y<sub>j</sub></i></span> and <span class="m"><i>I<sub>xz</sub></i> = −Σ <i>m<sub>j</sub></i><i>x<sub>j</sub></i><i>z<sub>j</sub></i></span>.</div></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== 2. MATRIX EQUATION [L] = [I][omega] (SLIDES 6-8) ===================== -->
+<section class="sec" id="s-matrix" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 6–8</div>
+    <h2 class="sec-title">The Matrix Equation: <span class="m">[<span class="lv">L</span>] = [<i>I</i>][<span class="om">ω</span>]</span> &amp; <span class="m">[<span class="tv">τ</span>] = [<i>I</i>][<i>α</i>]</span></h2>
+    <p class="lede">The fact that <span class="m">[<i>I</i>]</span> is a 3×3 matrix means that <span class="m"><span class="vec lv">L</span></span> and <span class="m"><span class="vec om">ω</span></span> do <strong>not</strong> necessarily point in the same direction — and torque <span class="m"><span class="vec tv">τ</span></span> and angular acceleration <span class="m"><span class="vec">α</span></span> may not point in the same direction either!</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Steer <span class="m"><span class="vec om">ω</span></span> and watch <span class="m">[<i>I</i>]</span> deflect <span class="m"><span class="vec lv">L</span></span></h3>
+      <div class="btnrow">
+        <button class="btn" data-mx="coupled" aria-pressed="true" type="button">With off-diagonal coupling (I_xy, I_xz ≠ 0)</button>
+        <button class="btn" data-mx="aniso" type="button">Diagonal but unequal (I_xx ≠ I_yy ≠ I_zz)</button>
+        <button class="btn" data-mx="iso" type="button">Isotropic sphere (I_xx = I_yy = I_zz)</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-matrix"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="mx-th">Polar angle of <span class="m"><span class="vec om">ω</span></span> <span class="val" id="mx-th-v">45°</span></label><input type="range" id="mx-th" min="0" max="90" step="1" value="45"></div>
+      <div class="ctl"><label for="mx-ph">Azimuth of <span class="m"><span class="vec om">ω</span></span> <span class="val" id="mx-ph-v">30°</span></label><input type="range" id="mx-ph" min="0" max="360" step="2" value="30"></div>
+      <div class="ctl"><label for="mx-od">Off-diagonal coupling <span class="m">|<i>I<sub>xz</sub></i>|</span> <span class="val" id="mx-od-v">1.20</span></label><input type="range" id="mx-od" min="0" max="2.0" step="0.1" value="1.2"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">ω vector</div><div class="v om" id="mx-wvec">(0.61, 0.35, 0.71)</div></div>
+      <div class="ro"><div class="k">L = [I] ω</div><div class="v lv" id="mx-lvec">(0.37, 0.71, 1.42)</div></div>
+      <div class="ro"><div class="k">Angle between L and ω</div><div class="v tv" id="mx-ang">24.6°</div></div>
+      <div class="ro"><div class="k">Parallel?</div><div class="v" id="mx-par">NO — deflected!</div></div>
+    </div>
+  </div>
+
+  <div class="scrollx">
+    <div class="eq-card" style="align-items:center;padding:22px">
+      <div class="eq big">
+        <span class="vec3 lv"><span><i>L<sub>x</sub></i></span><span><i>L<sub>y</sub></i></span><span><i>L<sub>z</sub></i></span></span>
+        <span>=</span>
+        <span class="mat3">
+          <span><i>I<sub>xx</sub></i></span><span class="tv"><i>I<sub>xy</sub></i></span><span class="tv"><i>I<sub>xz</sub></i></span>
+          <span class="tv"><i>I<sub>yx</sub></i></span><span><i>I<sub>yy</sub></i></span><span class="tv"><i>I<sub>yz</sub></i></span>
+          <span class="tv"><i>I<sub>zx</sub></i></span><span class="tv"><i>I<sub>zy</sub></i></span><span><i>I<sub>zz</sub></i></span>
+        </span>
+        <span class="vec3 om"><span><i>ω<sub>x</sub></i></span><span><i>ω<sub>y</sub></i></span><span><i>ω<sub>z</sub></i></span></span>
+        <span>&nbsp;&nbsp;&nbsp;and&nbsp;&nbsp;&nbsp;</span>
+        <span class="vec3 tv"><span><i>τ<sub>x</sub></i></span><span><i>τ<sub>y</sub></i></span><span><i>τ<sub>z</sub></i></span></span>
+        <span>=</span>
+        <span class="mat3">
+          <span><i>I<sub>xx</sub></i></span><span class="tv"><i>I<sub>xy</sub></i></span><span class="tv"><i>I<sub>xz</sub></i></span>
+          <span class="tv"><i>I<sub>yx</sub></i></span><span><i>I<sub>yy</sub></i></span><span class="tv"><i>I<sub>yz</sub></i></span>
+          <span class="tv"><i>I<sub>zx</sub></i></span><span class="tv"><i>I<sub>zy</sub></i></span><span><i>I<sub>zz</sub></i></span>
+        </span>
+        <span class="vec3"><span><i>α<sub>x</sub></i></span><span><i>α<sub>y</sub></i></span><span><i>α<sub>z</sub></i></span></span>
+      </div>
+      <div class="cap"><strong>Slides 6–8:</strong> Unlike <span class="m"><span class="vec vv">p</span> = <i>m</i><span class="vec vv">v</span></span> (where mass <span class="m"><i>m</i></span> is a scalar so <span class="m"><span class="vec vv">p</span> ∥ <span class="vec vv">v</span></span>), moment of inertia <span class="m">[<i>I</i>]</span> is a 3×3 matrix. Therefore <span class="m"><span class="lv"><i>L</i></span></span> about one axis depends on <span class="m"><span class="om">ω</span></span> about all three axes!</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 3. DIAGONAL vs OFF-DIAGONAL IMBALANCE (SLIDES 9-10) ===================== -->
+<section class="sec" id="s-elements" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 9–10</div>
+    <h2 class="sec-title">Diagonal vs. off-diagonal elements of <span class="m">[<i>I</i>]</span></h2>
+    <p class="lede">Diagonal integrands (<span class="m"><i>y</i><sup>2</sup>+<i>z</i><sup>2</sup></span>, <span class="m"><i>z</i><sup>2</sup>+<i>x</i><sup>2</sup></span>, <span class="m"><i>x</i><sup>2</sup>+<i>y</i><sup>2</sup></span>) are the squared perpendicular distances to the <span class="m"><i>x, y, z</i></span> axes. Off-diagonal elements (<span class="m">−∫ <i>xy dm</i></span>, etc.) measure <strong>mass imbalance</strong> across quadrants.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Interactive mass-imbalance lab (Slide 10)</h3>
+      <div class="btnrow">
+        <button class="btn" data-el="sym" type="button">Symmetric 4-mass quad (I_xy = 0)</button>
+        <button class="btn" data-el="imb" aria-pressed="true" type="button">Q1–Q3 Tilted dumbbell (I_xy &lt; 0)</button>
+        <button class="btn" data-el="single" type="button">Single off-axis mass</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-elements"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="el-x">Mass coordinate <span class="m"><i>x</i></span> <span class="val" id="el-x-v">1.20 m</span></label><input type="range" id="el-x" min="-1.6" max="1.6" step="0.1" value="1.2"></div>
+      <div class="ctl"><label for="el-y">Mass coordinate <span class="m"><i>y</i></span> <span class="val" id="el-y-v">1.00 m</span></label><input type="range" id="el-y" min="-1.6" max="1.6" step="0.1" value="1.0"></div>
+      <div class="ctl"><label for="el-z">Mass coordinate <span class="m"><i>z</i></span> <span class="val" id="el-z-v">0.80 m</span></label><input type="range" id="el-z" min="-1.5" max="1.5" step="0.1" value="0.8"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Diagonal I_xx, I_yy, I_zz</div><div class="v rv" id="el-diag">3.28, 4.16, 4.88</div></div>
+      <div class="ro"><div class="k">Product I_xy = −Σ m xy</div><div class="v tv" id="el-ixy">−2.40 kg·m²</div></div>
+      <div class="ro"><div class="k">Product I_xz = −Σ m xz</div><div class="v tv" id="el-ixz">−1.92 kg·m²</div></div>
+      <div class="ro"><div class="k">Mass distribution</div><div class="v" id="el-stat">IMBALANCED</div></div>
+    </div>
+  </div>
+
+  <div class="scrollx">
+    <div class="eq-card" style="align-items:center;padding:20px">
+      <div class="eq">
+        <span class="m">[<i>I</i>] = </span>
+        <span class="mat3 m">
+          <span class="rv">∫(<i>y</i><sup>2</sup> + <i>z</i><sup>2</sup>)<i>dm</i></span>
+          <span class="tv">−∫ <i>xy dm</i></span>
+          <span class="tv">−∫ <i>zx dm</i></span>
+          <span class="tv">−∫ <i>xy dm</i></span>
+          <span class="rv">∫(<i>z</i><sup>2</sup> + <i>x</i><sup>2</sup>)<i>dm</i></span>
+          <span class="tv">−∫ <i>yz dm</i></span>
+          <span class="tv">−∫ <i>zx dm</i></span>
+          <span class="tv">−∫ <i>yz dm</i></span>
+          <span class="rv">∫(<i>x</i><sup>2</sup> + <i>y</i><sup>2</sup>)<i>dm</i></span>
+        </span>
+      </div>
+      <div class="cap"><strong>Slide 9–10 continuous medium matrix:</strong> Notice that <span class="m">[<i>I</i>]</span> is always <strong>symmetric</strong> (<span class="m"><i>I<sub>xy</sub></i> = <i>I<sub>yx</sub></i></span>, <span class="m"><i>I<sub>xz</sub></i> = <i>I<sub>zx</sub></i></span>, <span class="m"><i>I<sub>yz</sub></i> = <i>I<sub>zy</sub></i></span>).</div>
+    </div>
+  </div>
+
+  <div class="note ok"><strong>Why reflection symmetry kills off-diagonal terms.</strong> Press <strong>Symmetric 4-mass quad</strong> above: for every mass at <span class="m">(+<i>x</i>, +<i>y</i>)</span>, there is an equal mirror mass at <span class="m">(−<i>x</i>, +<i>y</i>)</span>. Their <span class="m"><i>xy</i></span> products have opposite signs and cancel to zero!</div>
+</section>
+
+<!-- ===================== 4. PRINCIPAL AXES & DIAGONALIZATION (SLIDES 11-13) ===================== -->
+<section class="sec" id="s-principal" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 11–13</div>
+    <h2 class="sec-title">Principal axes &amp; matrix diagonalization</h2>
+    <p class="lede">For <em>any</em> rigid body, there exist three mutually perpendicular axes passing through the body about which all products of inertia (<span class="m"><i>I<sub>xy</sub></i>, <i>I<sub>yz</sub></i>, <i>I<sub>zx</sub></i></span>) vanish. Rotate the coordinate frame below until <span class="m">[<i>I</i>]</span> becomes diagonal!</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Rotate axes <span class="m">(<i>x′, y′, z′</i>)</span> to find the Principal Axes (Slides 11–13)</h3>
+      <div class="btnrow">
+        <button class="btn" id="pr-lab" type="button">Lab frame (θ = 0°, Cumbersome!)</button>
+        <button class="btn primary" id="pr-snap" type="button">Snap to Principal Axes (I_x'y' = 0)</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-principal"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="pr-ang">Frame rotation angle <span class="m"><i>θ</i></span> <span class="val" id="pr-ang-v">0°</span></label><input type="range" id="pr-ang" min="-45" max="90" step="1" value="0"></div>
+      <div class="ctl"><label for="pr-body">Body tilt angle <span class="val" id="pr-body-v">32°</span></label><input type="range" id="pr-body" min="0" max="60" step="1" value="32"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">I_x'x' (Moment 1)</div><div class="v rv" id="pr-i1">2.12 kg·m²</div></div>
+      <div class="ro"><div class="k">I_y'y' (Moment 2)</div><div class="v rv" id="pr-i2">4.88 kg·m²</div></div>
+      <div class="ro"><div class="k">Off-diagonal I_x'y'</div><div class="v tv" id="pr-ixy">−1.80 kg·m²</div></div>
+      <div class="ro"><div class="k">Is L parallel to ω?</div><div class="v" id="pr-par">NO (Cumbersome!)</div></div>
+    </div>
+  </div>
+
+  <div class="eq-grid">
+    <div class="eq-card">
+      <h4>In arbitrary axes (Slide 13 top — "Cumbersome!")</h4>
+      <div class="eq" style="font-size:16px;flex-direction:column;align-items:flex-start">
+        <span class="m"><span class="lv"><i>L<sub>x</sub></i></span> = <i>I<sub>xx</sub></i><span class="om">ω<sub>x</sub></span> + <span class="tv"><i>I<sub>xy</sub></i></span><span class="om">ω<sub>y</sub></span> + <span class="tv"><i>I<sub>xz</sub></i></span><span class="om">ω<sub>z</sub></span></span>
+        <span class="m"><span class="lv"><i>L<sub>y</sub></i></span> = <span class="tv"><i>I<sub>yx</sub></i></span><span class="om">ω<sub>x</sub></span> + <i>I<sub>yy</sub></i><span class="om">ω<sub>y</sub></span> + <span class="tv"><i>I<sub>yz</sub></i></span><span class="om">ω<sub>z</sub></span></span>
+        <span class="m"><span class="lv"><i>L<sub>z</sub></i></span> = <span class="tv"><i>I<sub>zx</sub></i></span><span class="om">ω<sub>x</sub></span> + <span class="tv"><i>I<sub>zy</sub></i></span><span class="om">ω<sub>y</sub></span> + <i>I<sub>zz</sub></i><span class="om">ω<sub>z</sub></span></span>
+      </div>
+      <div class="cap">All three axes are coupled together by 6 off-diagonal terms.</div>
+    </div>
+    <div class="eq-card">
+      <h4>In Principal Axes (Slide 13 bottom — Diagonal!)</h4>
+      <div class="eq" style="font-size:16px">
+        <span class="m">[<i>I</i>] = </span>
+        <span class="mat3 m"><span class="rv"><i>I</i><sub>1</sub></span><span>0</span><span>0</span><span>0</span><span class="rv"><i>I</i><sub>2</sub></span><span>0</span><span>0</span><span>0</span><span class="rv"><i>I</i><sub>3</sub></span></span>
+      </div>
+      <div class="eq" style="font-size:17px"><span class="m"><span class="lv"><i>L<sub>x</sub></i></span> = <i>I</i><sub>1</sub><span class="om">ω<sub>x</sub></span>,&nbsp;&nbsp;<span class="lv"><i>L<sub>y</sub></i></span> = <i>I</i><sub>2</sub><span class="om">ω<sub>y</sub></span>,&nbsp;&nbsp;<span class="lv"><i>L<sub>z</sub></i></span> = <i>I</i><sub>3</sub><span class="om">ω<sub>z</sub></span></span></div>
+      <div class="cap">Found via matrix diagonalization: <span class="m">det(<i>I</i> − <i>λ</i><b>1</b>) = 0</span>, where eigenvalues <span class="m"><i>λ</i> = (<i>I</i><sub>1</sub>, <i>I</i><sub>2</sub>, <i>I</i><sub>3</sub>)</span> are the principal moments of inertia!</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 5. CONSEQUENCE OF OFF-DIAGONAL COUPLING (SLIDES 14-16 & 22) ===================== -->
+<section class="sec" id="s-wobble" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 14–16 &amp; 22 · Real-World Consequence</div>
+    <h2 class="sec-title">Dynamic coupling &amp; high-speed wheel wobble</h2>
+    <p class="lede">Off-diagonal elements represent <strong>coupling of rotation about one axis with the others</strong>. Applying a torque purely in the <span class="m"><i>z</i></span> direction does not produce angular acceleration purely in <span class="m"><i>z</i></span> — it kicks the <span class="m"><i>x</i></span> and <span class="m"><i>y</i></span> axes too!</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Simulate F1 wheel &amp; motorcycle wobble (Slides 14–16)</h3>
+      <div class="btnrow">
+        <button class="btn" data-wb="balanced" type="button">Balanced wheel (I_zx = I_zy = 0)</button>
+        <button class="btn" data-wb="coupled" aria-pressed="true" type="button">Off-diagonal coupling (I_zx ≠ 0)</button>
+        <button class="btn primary" id="wb-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-wobble"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="wb-tz">Applied drive torque <span class="m"><span class="tv">τ<sub>z</sub></span></span> <span class="val" id="wb-tz-v">6.0 N·m</span></label><input type="range" id="wb-tz" min="1.0" max="12.0" step="0.5" value="6.0"></div>
+      <div class="ctl"><label for="wb-izx">Imbalance product <span class="m">|<i>I<sub>zx</sub></i>|</span> <span class="val" id="wb-izx-v">0.80 kg·m²</span></label><input type="range" id="wb-izx" min="0.0" max="1.4" step="0.05" value="0.8"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Applied Torque τ</div><div class="v tv" id="wb-tvec">(0.0, 0.0, 6.0)</div></div>
+      <div class="ro"><div class="k">Induced α_z (primary)</div><div class="v om" id="wb-az">2.59 rad/s²</div></div>
+      <div class="ro"><div class="k">Parasitic α_x, α_y wobble!</div><div class="v tv" id="wb-axy">−1.03, 0.00 rad/s²</div></div>
+      <div class="ro"><div class="k">Axle behaviour</div><div class="v" id="wb-stat">VIOLENT SHIMMY</div></div>
+    </div>
+  </div>
+
+  <div class="eq-card">
+    <div class="eq big"><span class="m"><span class="tv"><i>τ<sub>z</sub></i></span> = <span class="tv"><i>I<sub>zx</sub></i></span><i>α<sub>x</sub></i> + <span class="tv"><i>I<sub>zy</sub></i></span><i>α<sub>y</sub></i> + <i>I<sub>zz</sub></i><i>α<sub>z</sub></i></span></div>
+    <div class="cap"><strong>Slide 14–16 &amp; 22 equation:</strong> Because of bi-directional coupling (<span class="m"><i>Z–X</i></span> and <span class="m"><i>Z–Y</i></span>), any attempt to rotate an unbalanced wheel about the <span class="m"><i>z</i></span> axis induces sideways angular accelerations <span class="m"><i>α<sub>x</sub></i></span> and <span class="m"><i>α<sub>y</sub></i></span> (seen in the F1 tire vibration and motorcycle tank-slapper GIFs on Slide 15).</div>
+  </div>
+</section>
+
+<!-- ===================== 6. WHAT IS A TENSOR? RANKS 0 TO 4 (SLIDES 17-22) ===================== -->
+<section class="sec" id="s-tensors" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 17–22</div>
+    <h2 class="sec-title">Is Moment of Inertia a Scalar? Vector? Or… a Tensor!</h2>
+    <p class="lede">The <strong>rank of a tensor</strong> is defined by the number of directions (indices) required to describe a component of it. Explore Ranks 0, 1, 2, 3, and 4 interactively below.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Interactive Tensor Rank Explorer (<span class="m">3<sup>rank</sup></span> components in 3D)</h3>
+      <div class="btnrow">
+        <button class="btn" data-rk="0" type="button">Rank 0: Scalar (1)</button>
+        <button class="btn" data-rk="1" type="button">Rank 1: Vector (3)</button>
+        <button class="btn" data-rk="2" aria-pressed="true" type="button">Rank 2: Matrix / Inertia (9)</button>
+        <button class="btn" data-rk="3" type="button">Rank 3: 3D Cube (27)</button>
+        <button class="btn" data-rk="4" type="button">Rank 4: Row of Cubes (81)</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-tensors"></canvas><div class="hint">drag to orbit 3D array</div></div>
+    <div class="readout">
+      <div class="ro"><div class="k">Tensor Rank</div><div class="v om" id="rk-num">Rank 2 (Matrix)</div></div>
+      <div class="ro"><div class="k">Indices needed</div><div class="v" id="rk-idx">2 indices: m_ij (i, j = 1,2,3)</div></div>
+      <div class="ro"><div class="k">3D Components (3^rank)</div><div class="v rv" id="rk-cnt">3² = 9 components</div></div>
+      <div class="ro"><div class="k">Physics Examples (Slide 18–22)</div><div class="v" id="rk-ex">Moment of Inertia [I], Stress σ_ij</div></div>
+    </div>
+  </div>
+
+  <div class="scrollx">
+  <table class="cmp">
+    <thead><tr><th>Rank</th><th>Name</th><th>Indices</th><th>Components in 3D</th><th>Slide Examples</th></tr></thead>
+    <tbody>
+      <tr><th>Rank 0</th><td>Scalar</td><td class="m">none &nbsp;[<i>s</i>]</td><td class="m">3<sup>0</sup> = 1</td><td>Temperature <span class="m">[<i>T</i>]</span>, Mass <span class="m"><i>m</i></span>, Potential</td></tr>
+      <tr><th>Rank 1</th><td>Vector</td><td class="m">1 index &nbsp;<i>F<sub>i</sub></i></td><td class="m">3<sup>1</sup> = 3</td><td>Force <span class="m"><span class="vec">F</span></span>, Velocity <span class="m"><span class="vec vv">v</span></span>, Torque <span class="m"><span class="vec tv">τ</span></span></td></tr>
+      <tr><th>Rank 2</th><td>Matrix (Bi-directional)</td><td class="m">2 indices &nbsp;<i>I<sub>ij</sub></i></td><td class="m">3<sup>2</sup> = 9</td><td>Moment of Inertia <span class="m">[<i>I</i>]</span>, Stress tensor <span class="m"><i>σ<sub>ij</sub></i></span>, EM tensor <span class="m"><i>F<sub>μν</sub></i></span> (4×4 in 4D)</td></tr>
+      <tr><th>Rank 3</th><td>3D Grid</td><td class="m">3 indices &nbsp;<i>T<sub>ijk</sub></i></td><td class="m">3<sup>3</sup> = 27</td><td>Piezoelectric tensor, Levi-Civita <span class="m"><i>ε<sub>ijk</sub></i></span></td></tr>
+      <tr><th>Rank 4</th><td>4D Array</td><td class="m">4 indices &nbsp;<i>C<sub>ijkl</sub></i></td><td class="m">3<sup>4</sup> = 81</td><td>Elasticity stiffness tensor, Riemann curvature <span class="m"><i>R<sub>ijkl</sub></i></span></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ===================== 7. COORDINATE ROTATION LAWS (SLIDES 18-19) ===================== -->
+<section class="sec" id="s-transform" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 18–19</div>
+    <h2 class="sec-title">How Vectors and Rank-2 Tensors transform under rotation</h2>
+    <p class="lede">A physical quantity is only a true tensor if its components transform by the rotation matrix <span class="m"><i>R<sub>ij</sub></i></span> when you rotate your coordinate axes: once for a Rank-1 vector (<span class="m"><i>F′<sub>i</sub></i> = <i>R<sub>ij</sub>F<sub>j</sub></i></span>), and <strong>twice</strong> for a Rank-2 tensor (<span class="m"><i>m′<sub>ij</sub></i> = <i>R<sub>ik</sub>R<sub>jl</sub>m<sub>kl</sub></i></span>).</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Live coordinate rotation calculator: <span class="m"><i>F′<sub>i</sub></i> = <i>R<sub>ij</sub>F<sub>j</sub></i></span> &amp; <span class="m"><i>I′<sub>ij</sub></i> = <i>R<sub>ik</sub>R<sub>jl</sub>I<sub>kl</sub></i></span></h3>
+      <div class="btnrow">
+        <button class="btn" data-tf="0" aria-pressed="true" type="button">φ = 0° (Identity)</button>
+        <button class="btn" data-tf="30" type="button">φ = 30°</button>
+        <button class="btn" data-tf="45" type="button">φ = 45° (Diagonalizes!)</button>
+        <button class="btn" data-tf="90" type="button">φ = 90° (Swaps x &amp; y)</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-transform"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="tf-ang">Coordinate rotation angle <span class="m"><i>φ</i></span> about <span class="m"><i>z</i></span> <span class="val" id="tf-ang-v">0°</span></label><input type="range" id="tf-ang" min="0" max="180" step="1" value="0"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Rank 0: T' = T</div><div class="v" id="tf-r0">300 K (invariant)</div></div>
+      <div class="ro"><div class="k">Rank 1: F'_i = R_ij F_j</div><div class="v vv" id="tf-r1">(2.00, 1.00, 0.00)</div></div>
+      <div class="ro"><div class="k">Rank 2: I'_xx, I'_yy</div><div class="v rv" id="tf-r2d">3.00, 3.00</div></div>
+      <div class="ro"><div class="k">Rank 2: I'_xy = R_ik R_jl I_kl</div><div class="v tv" id="tf-r2o">−1.00 (at 45° → 0.00!)</div></div>
+    </div>
+  </div>
+
+  <div class="eq-grid">
+    <div class="eq-card">
+      <h4>Rank-1 Vector Transformation (Slide 18)</h4>
+      <div class="eq big"><span class="m"><i>F′<sub>i</sub></i> = Σ<sub><i>j</i></sub> <i>R<sub>ij</sub> F<sub>j</sub></i></span></div>
+      <div class="cap">One index <span class="m"><i>i</i></span> → one copy of the rotation matrix <span class="m"><i>R</i></span>.</div>
+    </div>
+    <div class="eq-card">
+      <h4>Rank-2 Tensor Transformation (Slide 19)</h4>
+      <div class="eq big"><span class="m"><i>m′<sub>ij</sub></i> = Σ<sub><i>k,l</i></sub> <i>R<sub>ik</sub> R<sub>jl</sub> m<sub>kl</sub></i></span></div>
+      <div class="cap">Two indices <span class="m"><i>i, j</i></span> → two copies of the rotation matrix (<span class="m"><i>M′</i> = <i>R M R<sup>T</sup></i></span>).</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 8. FORMULA SHEET ===================== -->
+<section class="sec" id="s-sheet" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Every equation in Lecture 20</div>
+    <h2 class="sec-title">Formula sheet</h2>
+    <p class="lede">Every equation and tensor definition from 20.pptx (Slides 1–22), linked to its interactive visualizer.</p>
+  </div>
+
+  <div class="sheet">
+    <div class="sheet-card"><div class="top"><h4>General 3D Angular Momentum</h4><button class="jump" data-goto="triple" type="button">section 01 →</button></div><div class="eq"><span class="m"><span class="vec lv">L</span> = Σ<sub><i>j</i>=1</sub><sup><i>N</i></sup> <span style="font-size:1.2em">[</span><span class="vec rv">r</span><sub><i>j</i></sub> × <i>m<sub>j</sub></i>(<span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub>)<span style="font-size:1.2em">]</span></span></div><div class="cap">Where <span class="m"><span class="vec om">ω</span> = <span class="om">ω<sub>x</sub></span><span class="hatv">x</span> + <span class="om">ω<sub>y</sub></span><span class="hatv">y</span> + <span class="om">ω<sub>z</sub></span><span class="hatv">z</span></span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Diagonal Moments of Inertia</h4><button class="jump" data-goto="elements" type="button">section 03 →</button></div><div class="eq"><span class="m"><i>I<sub>xx</sub></i> = ∫(<i>y</i><sup>2</sup> + <i>z</i><sup>2</sup>)<i>dm</i></span></div><div class="cap">Similarly <span class="m"><i>I<sub>yy</sub></i> = ∫(<i>z</i><sup>2</sup>+<i>x</i><sup>2</sup>)<i>dm</i></span>, <span class="m"><i>I<sub>zz</sub></i> = ∫(<i>x</i><sup>2</sup>+<i>y</i><sup>2</sup>)<i>dm</i></span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Off-Diagonal Products of Inertia</h4><button class="jump" data-goto="elements" type="button">section 03 →</button></div><div class="eq"><span class="m"><span class="tv"><i>I<sub>xy</sub></i></span> = <span class="tv"><i>I<sub>yx</sub></i></span> = −∫ <i>xy dm</i></span></div><div class="cap">Measure of mass imbalance; vanishes for symmetric axes.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Matrix Equation for <span class="m"><span class="vec lv">L</span></span></h4><button class="jump" data-goto="matrix" type="button">section 02 →</button></div><div class="eq"><span class="m">[<span class="lv"><i>L</i></span>] = [<i>I</i>][<span class="om">ω</span>],&nbsp;&nbsp; <span class="lv"><i>L<sub>x</sub></i></span> = <i>I<sub>xx</sub></i><span class="om">ω<sub>x</sub></span> + <span class="tv"><i>I<sub>xy</sub></i></span><span class="om">ω<sub>y</sub></span> + <span class="tv"><i>I<sub>xz</sub></i></span><span class="om">ω<sub>z</sub></span></span></div><div class="cap"><span class="m"><span class="vec lv">L</span></span> and <span class="m"><span class="vec om">ω</span></span> do not necessarily point in the same direction.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Matrix Equation for Torque <span class="m"><span class="vec tv">τ</span></span></h4><button class="jump" data-goto="wobble" type="button">section 05 →</button></div><div class="eq"><span class="m">[<span class="tv"><i>τ</i></span>] = [<i>I</i>][<i>α</i>],&nbsp;&nbsp; <span class="tv"><i>τ<sub>z</sub></i></span> = <span class="tv"><i>I<sub>zx</sub></i></span><i>α<sub>x</sub></i> + <span class="tv"><i>I<sub>zy</sub></i></span><i>α<sub>y</sub></i> + <i>I<sub>zz</sub></i><i>α<sub>z</sub></i></span></div><div class="cap">Torque and angular acceleration <span class="m"><span class="vec">α</span></span> may not point in the same direction.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Principal Axes &amp; Eigenvalues</h4><button class="jump" data-goto="principal" type="button">section 04 →</button></div><div class="eq"><span class="m">det(<i>I</i> − <i>λ</i><b>1</b>) = 0 &nbsp;⟹&nbsp; <span class="lv"><i>L<sub>i</sub></i></span> = <i>I<sub>i</sub></i><span class="om">ω<sub>i</sub></span></span></div><div class="cap">Along principal axes, <span class="m">[<i>I</i>]</span> is diagonal and <span class="m"><span class="vec lv">L</span> ∥ <span class="vec om">ω</span></span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Rank-1 Vector Rotation</h4><button class="jump" data-goto="transform" type="button">section 07 →</button></div><div class="eq"><span class="m"><i>F′<sub>i</sub></i> = <i>R<sub>ij</sub> F<sub>j</sub></i></span></div><div class="cap">1 index → Rank-1 tensor.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Rank-2 Tensor Rotation</h4><button class="jump" data-goto="transform" type="button">section 07 →</button></div><div class="eq"><span class="m"><i>m′<sub>ij</sub></i> = <i>R<sub>ik</sub> R<sub>jl</sub> m<sub>kl</sub></i></span></div><div class="cap">2 indices (bi-directional coupling) → Rank-2 tensor.</div></div>
+  </div>
+</section>
+
+<!-- ===================== 9. QUIZ ===================== -->
+<section class="sec" id="s-quiz" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Self-check</div>
+    <h2 class="sec-title">Ten questions on Lecture 20</h2>
+    <p class="lede">Test your understanding of the inertia matrix, products of inertia, principal axes, dynamic coupling, and tensor ranks.</p>
+  </div>
+  <div id="quizlist" style="display:flex;flex-direction:column;gap:14px"></div>
+  <div class="score" id="score">0 answered</div>
+</section>
+
+</div>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const unit=a=>{const L=len(a)||1;return mul(a,1/L)};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const DEG=Math.PI/180;
+const fmt=(v,n)=>{const s=v.toFixed(n);return (Object.is(parseFloat(s),-0)||s==="-"+(0).toFixed(n))?(0).toFixed(n):s};
+function matVec(A,v){return [A[0][0]*v[0]+A[0][1]*v[1]+A[0][2]*v[2],A[1][0]*v[0]+A[1][1]*v[1]+A[1][2]*v[2],A[2][0]*v[0]+A[2][1]*v[1]+A[2][2]*v[2]]}
+
+/* ============ theme colours ============ */
+let CSS_CACHE={},cssStamp=0;
+function col(name){
+  if(!(name in CSS_CACHE)) CSS_CACHE[name]=getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim()||'#888';
+  return CSS_CACHE[name];
+}
+function flushColours(){CSS_CACHE={};cssStamp++;}
+try{ if(window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',flushColours);}catch(e){}
+new MutationObserver(flushColours).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ============ scene registry + 3D canvas ============ */
+const SCENES=[];
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function makeScene(section, canvasId, opt, renderFn){
+  const cv=document.getElementById(canvasId); if(!cv) return null;
+  const ctx=cv.getContext('2d');
+  const o=Object.assign({ratio:0.56,minH:260,maxH:430,yaw:36,pitch:22,dist:6.5,f:2.1,orbit:true,flat:false},opt);
+  const S={cv,ctx,section,yaw:o.yaw,pitch:o.pitch,dist:o.dist,f:o.f,W:600,H:340,t:0,playing:true,opt:o,data:{}};
+
+  function resize(){
+    const w=Math.max(220,cv.parentElement.clientWidth);
+    const h=clamp(Math.round(w*o.ratio),o.minH,o.maxH);
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+    cv.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    S.W=w;S.H=h;S.dirty=true;
+  }
+  S.resize=resize;
+  try{new ResizeObserver(resize).observe(cv.parentElement)}catch(e){window.addEventListener('resize',resize)}
+  resize();
+
+  if(o.orbit && !o.flat){
+    let dragging=false,lx=0,ly=0;
+    const down=e=>{dragging=true;const p=e.touches?e.touches[0]:e;lx=p.clientX;ly=p.clientY;cv.style.cursor='grabbing'};
+    const move=e=>{if(!dragging)return;const p=e.touches?e.touches[0]:e;
+      S.yaw-=(p.clientX-lx)*0.42;S.pitch=clamp(S.pitch+(p.clientY-ly)*0.35,-86,86);lx=p.clientX;ly=p.clientY;
+      if(e.cancelable&&e.touches)e.preventDefault();S.dirty=true};
+    const up=()=>{dragging=false;cv.style.cursor='grab'};
+    cv.style.cursor='grab';
+    cv.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+    cv.addEventListener('touchstart',down,{passive:true});cv.addEventListener('touchmove',move,{passive:false});
+    window.addEventListener('touchend',up);
+  }
+
+  S.basis=function(){
+    const pr=S.pitch*DEG, yw=S.yaw*DEG;
+    const ez=[Math.cos(pr)*Math.cos(yw),Math.cos(pr)*Math.sin(yw),Math.sin(pr)];
+    let ex=cross([0,0,1],ez); if(len(ex)<1e-6) ex=[1,0,0]; ex=unit(ex);
+    const ey=cross(ez,ex);
+    return {ex,ey,ez};
+  };
+  S.project=function(p,B){
+    B=B||S.basis();
+    const depth=S.dist-dot(p,B.ez);
+    const k=(S.f*Math.min(S.W,S.H*1.5)/2)/Math.max(depth,0.25);
+    return {x:S.cx+dot(p,B.ex)*k, y:S.cy-dot(p,B.ey)*k, d:depth, k:k};
+  };
+
+  const g={};
+  g.clear=()=>{ctx.clearRect(0,0,S.W,S.H)};
+  g.line=(A,B2,st)=>{st=st||{};ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x,B2.y);ctx.stroke();ctx.restore()};
+  g.path=(pts,st)=>{st=st||{};if(pts.length<2)return;ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+    if(st.close)ctx.closePath(); if(st.fill){ctx.fillStyle=st.fill;ctx.fill()} if(st.color!=='none')ctx.stroke();ctx.restore()};
+  g.arrow=(A,B2,st)=>{st=st||{};const c=st.color||col('fg');const w=st.w||2.4;
+    const dx=B2.x-A.x,dy=B2.y-A.y,L=Math.hypot(dx,dy);if(L<0.5)return;
+    const hs=Math.max(7,Math.min(13,L*0.26)),ux=dx/L,uy=dy/L;
+    ctx.save();ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x-ux*hs*0.75,B2.y-uy*hs*0.75);ctx.stroke();
+    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(B2.x,B2.y);
+    ctx.lineTo(B2.x-ux*hs+(-uy)*hs*0.40,B2.y-uy*hs+(ux)*hs*0.40);
+    ctx.lineTo(B2.x-ux*hs-(-uy)*hs*0.40,B2.y-uy*hs-(ux)*hs*0.40);
+    ctx.closePath();ctx.fill();ctx.restore()};
+  g.dot=(P,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg');ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.arc(P.x,P.y,st.r||4,0,6.2832);ctx.fill();
+    if(st.ring){ctx.strokeStyle=st.ring;ctx.lineWidth=1.6;ctx.stroke()}ctx.restore()};
+  g.text=(P,s,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg-2');
+    ctx.font=(st.italic?'italic ':'')+(st.weight||600)+' '+(st.size||12)+'px '+(st.mono?"ui-monospace,Menlo,Consolas,monospace":"'Spline Sans',system-ui,sans-serif");
+    ctx.textAlign=st.align||'center';ctx.textBaseline=st.base||'middle';ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    if(st.halo){ctx.lineWidth=3.4;ctx.strokeStyle=col('surface');ctx.lineJoin='round';ctx.strokeText(s,P.x+(st.dx||0),P.y+(st.dy||0))}
+    ctx.fillText(s,P.x+(st.dx||0),P.y+(st.dy||0));ctx.restore()};
+  g.ring=(center,u,v,R,st,n,a0,a1)=>{
+    n=n||72;a0=a0==null?0:a0;a1=a1==null?Math.PI*2:a1;const B=S.basis();const pts=[];
+    for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;pts.push(S.project(add(center,add(mul(u,R*Math.cos(a)),mul(v,R*Math.sin(a)))),B))}
+    g.path(pts,st)};
+  S.g=g;
+
+  S.render=renderFn;
+  SCENES.push(S);
+  return S;
+}
+
+function drawAxes(S,opt){
+  const g=S.g,B=S.basis(),o=Object.assign({size:2.0,grid:true,labels:['x','y','z'],gridN:3,plane:'xy'},opt||{});
+  const O=S.project([0,0,0],B);
+  if(o.grid){
+    const n=o.gridN,st={color:col('line'),w:1,alpha:.85};
+    for(let i=-n;i<=n;i++){
+      const f=i/n*o.size;
+      if(o.plane==='xy'){g.line(S.project([f,-o.size,0],B),S.project([f,o.size,0],B),st);g.line(S.project([-o.size,f,0],B),S.project([o.size,f,0],B),st)}
+      else{g.line(S.project([f,0,-o.size],B),S.project([f,0,o.size],B),st);g.line(S.project([-o.size,0,f],B),S.project([o.size,0,f],B),st)}
+    }
+  }
+  const L=o.size*1.12, ax=[[L,0,0],[0,L,0],[0,0,L]];
+  for(let i=0;i<3;i++){
+    if(o.labels[i]===null) continue;
+    const P=S.project(ax[i],B);
+    g.line(O,P,{color:col('fg-3'),w:1.3,alpha:.95});
+    g.text(P,o.labels[i],{color:col('fg-3'),size:12.5,dx:9,dy:-7,italic:true,halo:true});
+  }
+  return B;
+}
+
+/* ============ navigation ============ */
+const SECTIONS=[
+  {id:'triple',    label:'3D vector triple product'},
+  {id:'matrix',    label:'Matrix eq: [L] = [I][ω]'},
+  {id:'elements',  label:'Diagonal vs off-diagonal'},
+  {id:'principal', label:'Principal axes & eigenvalues'},
+  {id:'wobble',    label:'Off-diagonal wheel wobble'},
+  {id:'tensors',   label:'Tensor ranks 0 to 4'},
+  {id:'transform', label:'Coordinate rotation laws'},
+  {id:'sheet',     label:'Formula sheet'},
+  {id:'quiz',      label:'Self-check quiz'}
+];
+let current=SECTIONS[0].id;
+const navlist=document.getElementById('navlist'),tabscroll=document.getElementById('tabscroll');
+SECTIONS.forEach((s,i)=>{
+  const n=String(i+1).padStart(2,'0');
+  const li=document.createElement('li');
+  li.innerHTML='<button class="nav-link" type="button" data-goto="'+s.id+'"><span class="n">'+n+'</span><span>'+s.label+'</span></button>';
+  navlist.appendChild(li);
+  const b=document.createElement('button');
+  b.className='nav-link';b.type='button';b.dataset.goto=s.id;b.innerHTML='<span class="n">'+n+'</span><span>'+s.label+'</span>';
+  tabscroll.appendChild(b);
+});
+function show(id,push){
+  if(!SECTIONS.some(s=>s.id===id)) id=SECTIONS[0].id;
+  current=id;
+  SECTIONS.forEach(s=>{const el=document.getElementById('s-'+s.id); if(el) el.hidden = s.id!==id});
+  document.querySelectorAll('[data-goto]').forEach(b=>{if(b.classList.contains('nav-link'))b.setAttribute('aria-current',String(b.dataset.goto===id))});
+  if(push && location.hash.slice(1)!==id){try{location.hash=id}catch(e){}}
+  SCENES.forEach(S=>{if(S.section===id){S.resize();S.dirty=true}});
+  const act=tabscroll.querySelector('[data-goto="'+id+'"]'); if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'center'});
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-goto]'); if(!b)return;
+  show(b.dataset.goto,true);
+  if(!b.classList.contains('nav-link')) window.scrollTo({top:0,behavior:reduceMotion?'auto':'smooth'});
+});
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)||SECTIONS[0].id,false));
+
+/* ============ theme toggle ============ */
+const THEMES=['system','light','dark'];
+let ti=0;
+try{const st=localStorage.getItem('rbm20-theme'); if(st&&THEMES.indexOf(st)>=0) ti=THEMES.indexOf(st)}catch(e){}
+function applyTheme(){
+  const t=THEMES[ti];
+  if(t==='system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',t);
+  const lbl='Theme: '+t;
+  const a=document.getElementById('themeBtn'),b=document.getElementById('themeBtn2');
+  if(a)a.textContent=lbl; if(b)b.textContent=t==='system'?'Theme':t;
+  try{localStorage.setItem('rbm20-theme',t)}catch(e){}
+  flushColours();SCENES.forEach(S=>S.dirty=true);
+}
+['themeBtn','themeBtn2'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{ti=(ti+1)%3;applyTheme()})});
+applyTheme();
+
+/* ============ derivation steppers ============ */
+document.querySelectorAll('.deriv').forEach(d=>{
+  const items=Array.from(d.querySelectorAll('.deriv-steps li'));
+  let n=1;
+  const paint=()=>{items.forEach((li,i)=>li.dataset.off=i<n?'0':'1');
+    const nx=d.querySelector('[data-deriv-next]'),pv=d.querySelector('[data-deriv-prev]');
+    if(nx){nx.textContent=n>=items.length?'All steps shown':'Next step';nx.disabled=n>=items.length;nx.style.opacity=n>=items.length?.5:1}
+    if(pv){pv.disabled=n<=1;pv.style.opacity=n<=1?.5:1}};
+  d.querySelector('[data-deriv-next]')?.addEventListener('click',()=>{n=Math.min(items.length,n+1);paint()});
+  d.querySelector('[data-deriv-prev]')?.addEventListener('click',()=>{n=Math.max(1,n-1);paint()});
+  paint();
+});
+
+function bind(id,fn,fmtFn){
+  const el=document.getElementById(id),out=document.getElementById(id+'-v');
+  if(!el) return ()=>0;
+  const upd=()=>{const v=parseFloat(el.value); if(out&&fmtFn) out.textContent=fmtFn(v); fn&&fn(v); SCENES.forEach(S=>S.dirty=true)};
+  el.addEventListener('input',upd); upd();
+  return ()=>parseFloat(el.value);
+}
+function toggleGroup(attr,cb){
+  const btns=Array.from(document.querySelectorAll('[data-'+attr+']'));
+  btns.forEach(b=>b.addEventListener('click',()=>{
+    btns.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    cb(b.dataset[attr]); SCENES.forEach(S=>S.dirty=true);
+  }));
+  const init=btns.find(b=>b.getAttribute('aria-pressed')==='true')||btns[0];
+  if(init){btns.forEach(x=>x.setAttribute('aria-pressed',String(x===init)));cb(init.dataset[attr])}
+}
+function playBtn(id,getState,setState){
+  const el=document.getElementById(id); if(!el) return;
+  const paint=()=>{el.textContent=getState()?'Pause':'Play'};
+  el.addEventListener('click',()=>{setState(!getState());paint()});paint();
+}
+const txt=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v};
+
+/* ===================================================================
+   01 — 3D VECTOR TRIPLE PRODUCT (SLIDES 3–5)
+   =================================================================== */
+(function(){
+  let wx=0.8, wy=0.6, wz=1.4, psi=0, running=!reduceMotion, view='iso';
+  const r0=[1.0, 0.8, 1.0], mj=1.0;
+  const S=makeScene('triple','cv-triple',{yaw:34,pitch:22,dist:6.5,f:2.1,ratio:0.56},function(dt){
+    const g=this.g;
+    const w=[wx,wy,wz], wmag=len(w)||1;
+    const n=unit(w);
+    if(running) psi+=dt*wmag;
+    // Rotate r0 around n by psi
+    let e1=cross(n,[0,0,1]); if(len(e1)<1e-4) e1=cross(n,[0,1,0]); e1=unit(e1);
+    const e2=cross(n,e1);
+    const rpar=mul(n,dot(r0,n));
+    const rperpLen=len(sub(r0,rpar));
+    const r=add(rpar, mul(add(mul(e1,Math.cos(psi)),mul(e2,Math.sin(psi))), rperpLen));
+    const v=cross(w,r);
+    const L=cross(r,mul(v,mj));
+    if(view==='plane'){
+      const nrm=unit(cross(w,r));
+      this.yaw=Math.atan2(nrm[1],nrm[0])/DEG;
+      this.pitch=Math.asin(clamp(nrm[2],-1,1))/DEG;
+    }
+    this.cx=this.W/2;this.cy=this.H*0.56;
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:3});
+    const O=this.project([0,0,0],B);
+    // Orbit circle of particle j around axis n
+    if(rperpLen>0.04) g.ring(rpar,e1,e2,rperpLen,{color:col('rvec'),w:1.4,dash:[4,4],alpha:.7},64);
+    // Axis line along omega
+    g.line(this.project(mul(n,-1.8),B),this.project(mul(n,2.1),B),{color:col('omega'),w:1.3,dash:[5,4],alpha:.75});
+    // Omega arrow
+    g.arrow(O,this.project(mul(n,1.8),B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(n,2.0),B),'ω',{size:15,color:col('omega'),halo:true});
+    // r_j arrow
+    g.arrow(O,this.project(r,B),{color:col('rvec'),w:2.8});
+    g.text(this.project(mul(r,0.55),B),'r_j',{size:13,color:col('rvec'),italic:true,halo:true,dy:-10});
+    // v_j = omega x r_j arrow at particle
+    if(len(v)>0.04){
+      const vs=mul(unit(v),Math.min(1.2,0.3+len(v)*0.25));
+      g.arrow(this.project(r,B),this.project(add(r,vs),B),{color:col('vvec'),w:2.6});
+      g.text(this.project(add(r,mul(vs,1.22)),B),'ω × r_j',{size:12,color:col('vvec'),halo:true});
+    }
+    // L_j = r_j x m_j(omega x r_j) arrow from origin
+    if(len(L)>0.04){
+      const Ls=mul(unit(L),Math.min(1.85,0.4+len(L)*0.28));
+      g.arrow(O,this.project(Ls,B),{color:col('lvec'),w:3.4});
+      g.text(this.project(mul(Ls,1.14),B),'L_j = r_j × m(ω × r_j)',{size:12.5,color:col('lvec'),halo:true});
+    }
+    g.dot(this.project(r,B),{r:6,color:col('rvec'),ring:col('surface')});
+    const ixx=mj*(r[1]*r[1]+r[2]*r[2]), ixy=-mj*r[0]*r[1], ixz=-mj*r[0]*r[2];
+    const lx=ixx*wx + ixy*wy + ixz*wz;
+    txt('tr-ixx',fmt(ixx,2)+' kg·m²');
+    txt('tr-ixy',fmt(ixy,2)+' kg·m²');
+    txt('tr-ixz',fmt(ixz,2)+' kg·m²');
+    txt('tr-lx',fmt(lx,2));
+  });
+  if(!S) return;
+  bind('tr-wx',v=>wx=v,v=>v.toFixed(1)+' rad/s');
+  bind('tr-wy',v=>wy=v,v=>v.toFixed(1)+' rad/s');
+  bind('tr-wz',v=>wz=v,v=>v.toFixed(1)+' rad/s');
+  toggleGroup('trv',v=>{view=v;if(v==='iso'){S.yaw=34;S.pitch=22}});
+  playBtn('tr-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   02 — MATRIX EQUATION [L] = [I][omega] (SLIDES 6–8)
+   =================================================================== */
+(function(){
+  let preset='coupled', th=45, ph=30, od=1.2;
+  const slOd=document.getElementById('mx-od');
+  const S=makeScene('matrix','cv-matrix',{yaw:36,pitch:22,dist:6.4,f:2.1,ratio:0.54},function(){
+    const g=this.g;
+    this.cx=this.W/2;this.cy=this.H*0.56;
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:3});
+    const O=this.project([0,0,0],B);
+    let I;
+    if(preset==='coupled') I=[[2.0, -0.5*od, -od],[-0.5*od, 3.0, -0.3*od],[-od, -0.3*od, 4.0]];
+    else if(preset==='aniso') I=[[1.4,0,0],[0,2.8,0],[0,0,4.2]];
+    else I=[[2.5,0,0],[0,2.5,0],[0,0,2.5]];
+
+    const tR=th*DEG, pR=ph*DEG;
+    const w=[Math.sin(tR)*Math.cos(pR), Math.sin(tR)*Math.sin(pR), Math.cos(tR)];
+    const L=matVec(I,w);
+    const wU=unit(w), LU=unit(L);
+    const ang=Math.acos(clamp(dot(wU,LU),-1,1))/DEG;
+
+    // Draw inertia ellipsoid wireframe
+    g.ring([0,0,0],[1,0,0],[0,1,0],1.1,{color:col('line'),w:1.3,alpha:.7},48);
+    g.ring([0,0,0],[1,0,0],[0,0,1],0.85,{color:col('line'),w:1.3,alpha:.7},48);
+    g.ring([0,0,0],[0,1,0],[0,0,1],0.95,{color:col('line'),w:1.3,alpha:.7},48);
+
+    // Angle arc between omega and L
+    if(ang>1.0){
+      const e1=wU, e2=unit(sub(LU,mul(wU,dot(LU,wU))));
+      g.ring([0,0,0],e1,e2,0.75,{color:col('tau'),w:1.8,dash:[3,3]},32,0,ang*DEG);
+      const mid=unit(add(wU,LU));
+      g.text(this.project(mul(mid,0.95),B),fmt(ang,1)+'°',{size:11.5,color:col('tau'),halo:true});
+    }
+    // Omega arrow
+    g.arrow(O,this.project(mul(wU,1.75),B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(wU,1.98),B),'ω',{size:15.5,color:col('omega'),halo:true});
+    // L arrow
+    g.arrow(O,this.project(mul(LU,1.9),B),{color:col('lvec'),w:3.4});
+    g.text(this.project(mul(LU,2.14),B),'L = [I]ω',{size:14,color:col('lvec'),halo:true});
+    g.dot(O,{r:4,color:col('fg')});
+
+    txt('mx-wvec','('+fmt(w[0],2)+', '+fmt(w[1],2)+', '+fmt(w[2],2)+')');
+    txt('mx-lvec','('+fmt(L[0],2)+', '+fmt(L[1],2)+', '+fmt(L[2],2)+')');
+    txt('mx-ang',fmt(ang,1)+'°');
+    const par=ang<0.5;
+    txt('mx-par',par?'YES — parallel!':'NO — deflected!');
+    const el=document.getElementById('mx-par'); if(el) el.style.color=par?col('ok'):col('tau');
+  });
+  if(!S) return;
+  bind('mx-th',v=>th=v,v=>Math.round(v)+'°');
+  bind('mx-ph',v=>ph=v,v=>Math.round(v)+'°');
+  bind('mx-od',v=>od=v,v=>v.toFixed(2));
+  toggleGroup('mx',m=>{preset=m;if(m!=='coupled'&&slOd){slOd.disabled=true}else if(slOd){slOd.disabled=false}});
+})();
+
+/* ===================================================================
+   03 — DIAGONAL VS OFF-DIAGONAL IMBALANCE (SLIDES 9–10)
+   =================================================================== */
+(function(){
+  let mode='imb', x=1.2, y=1.0, z=0.8;
+  const S=makeScene('elements','cv-elements',{yaw:32,pitch:24,dist:6.4,f:2.1,ratio:0.52},function(){
+    const g=this.g;
+    this.cx=this.W/2;this.cy=this.H*0.56;
+    g.clear();
+    const B=drawAxes(this,{size:1.9,gridN:3});
+    const O=this.project([0,0,0],B);
+    let pts=[];
+    if(mode==='single') pts=[[x,y,z]];
+    else if(mode==='imb') pts=[[x,y,z],[-x,-y,-z]];
+    else pts=[[x,y,z],[-x,y,z],[x,-y,z],[-x,-y,z]];
+
+    let ixx=0,iyy=0,izz=0,ixy=0,ixz=0,iyz=0;
+    const m=1.0;
+    pts.forEach(p=>{
+      const [px,py,pz]=p;
+      ixx+=m*(py*py+pz*pz); iyy+=m*(pz*pz+px*px); izz+=m*(px*px+py*py);
+      ixy-=m*px*py; ixz-=m*px*pz; iyz-=m*py*pz;
+      const P=this.project(p,B), Pxy=this.project([px,py,0],B);
+      g.line(P,Pxy,{color:col('fg-3'),w:1.1,dash:[3,3]});
+      g.line(O,P,{color:col('rvec'),w:2.2});
+      g.dot(P,{r:6.5,color:col('rvec'),ring:col('surface')});
+    });
+    // Show distance to z-axis (sqrt(x^2+y^2)) for first point
+    const p0=pts[0];
+    g.line(this.project([0,0,p0[2]],B),this.project(p0,B),{color:col('omega'),w:1.8,dash:[4,3]});
+    g.text(this.project([p0[0]*0.5,p0[1]*0.5,p0[2]+0.16],B),'√(x²+y²)',{size:11,color:col('omega'),halo:true});
+
+    txt('el-diag',fmt(ixx,2)+', '+fmt(iyy,2)+', '+fmt(izz,2));
+    txt('el-ixy',fmt(ixy,2)+' kg·m²');
+    txt('el-ixz',fmt(ixz,2)+' kg·m²');
+    const bal=Math.abs(ixy)<1e-3 && Math.abs(ixz)<1e-3 && Math.abs(iyz)<1e-3;
+    txt('el-stat',bal?'BALANCED (Principal)':'IMBALANCED (Coupled)');
+    const stEl=document.getElementById('el-stat'); if(stEl) stEl.style.color=bal?col('ok'):col('tau');
+  });
+  if(!S) return;
+  bind('el-x',v=>x=v,v=>v.toFixed(2)+' m');
+  bind('el-y',v=>y=v,v=>v.toFixed(2)+' m');
+  bind('el-z',v=>z=v,v=>v.toFixed(2)+' m');
+  toggleGroup('el',m=>mode=m);
+})();
+
+/* ===================================================================
+   04 — PRINCIPAL AXES & DIAGONALIZATION (SLIDES 11–13)
+   =================================================================== */
+(function(){
+  let theta=0, bodyAng=32;
+  const slA=document.getElementById('pr-ang');
+  const I1=1.4, I2=5.6; // Principal moments
+  const S=makeScene('principal','cv-principal',{flat:true,orbit:false,ratio:0.46,minH:250,maxH:330},function(){
+    const g=this.g,W=this.W,H=this.H,ctx=this.ctx;
+    g.clear();
+    const cx=W*0.35, cy=H*0.52, R=Math.min(W*0.24,H*0.36);
+    const bRad=bodyAng*DEG, tRad=theta*DEG, diff=(bodyAng-theta)*DEG;
+
+    // Draw tilted rigid body (elliptical lamina / dumbbell) at angle bodyAng
+    ctx.save();
+    ctx.translate(cx,cy); ctx.rotate(-bRad);
+    ctx.fillStyle=col('surface-3'); ctx.strokeStyle=col('rvec'); ctx.lineWidth=2.4;
+    ctx.beginPath(); ctx.ellipse(0,0,R*1.05,R*0.42,0,0,6.2832); ctx.fill(); ctx.stroke();
+    // Principal axes of the body (dashed green)
+    ctx.strokeStyle=col('rvec'); ctx.setLineDash([4,4]); ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(-R*1.25,0); ctx.lineTo(R*1.25,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-R*0.85); ctx.lineTo(0,R*0.85); ctx.stroke();
+    ctx.restore();
+
+    // Draw user's rotated coordinate axes (x', y') at angle theta
+    const ex=[Math.cos(-tRad),Math.sin(-tRad)], ey=[-Math.sin(-tRad),Math.cos(-tRad)];
+    g.arrow({x:cx-ex[0]*R*1.1,y:cy-ex[1]*R*1.1},{x:cx+ex[0]*R*1.25,y:cy+ex[1]*R*1.25},{color:col('omega'),w:2.8});
+    g.text({x:cx+ex[0]*R*1.36,y:cy+ex[1]*R*1.36},"x'",{size:14,italic:true,color:col('omega'),halo:true});
+    g.arrow({x:cx-ey[0]*R*0.9,y:cy-ey[1]*R*0.9},{x:cx+ey[0]*R*1.1,y:cy+ey[1]*R*1.1},{color:col('omega'),w:2.8});
+    g.text({x:cx+ey[0]*R*1.22,y:cy+ey[1]*R*1.22},"y'",{size:14,italic:true,color:col('omega'),halo:true});
+    g.dot({x:cx,y:cy},{r:4.5,color:col('fg')});
+
+    // Compute rotated inertia matrix elements in (x', y') frame
+    const c=Math.cos(diff), s=Math.sin(diff);
+    const ixx = I1*c*c + I2*s*s;
+    const iyy = I1*s*s + I2*c*c;
+    const ixy = -(I2-I1)*s*c;
+
+    // Right side: Live 3x3 matrix display on canvas
+    const mx=W*0.66, my=H*0.26;
+    g.text({x:mx+75,y:my-18},"INERTIA MATRIX [I'] IN (x', y', z')",{size:10.5,color:col('fg-3'),weight:600});
+    const diag=Math.abs(ixy)<0.05;
+    const cells=[
+      [fmt(ixx,2), fmt(ixy,2), '0.00'],
+      [fmt(ixy,2), fmt(iyy,2), '0.00'],
+      ['0.00',     '0.00',     fmt(I1+I2,2)]
+    ];
+    for(let r=0;r<3;r++)for(let c2=0;c2<3;c2++){
+      const xP=mx+c2*74, yP=my+r*44;
+      ctx.save();
+      const isOff = r!==c2;
+      ctx.fillStyle = isOff ? (diag?col('surface-2'):'rgba(188,32,51,0.14)') : 'rgba(12,122,104,0.14)';
+      ctx.strokeStyle = isOff ? (diag?col('line'):col('tau')) : col('rvec');
+      ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.rect(xP-30,yP-16,60,32); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      g.text({x:xP,y:yP},cells[r][c2],{size:12.5,mono:true,color:isOff?(diag?col('fg-3'):col('tau')):col('rvec')});
+    }
+    g.text({x:mx+75,y:my+145},diag?'✓ DIAGONAL (Principal Axes Found!)':'Off-diagonal terms ≠ 0 (Coupled!)',{size:12,color:diag?col('ok'):col('tau'),weight:600});
+
+    txt('pr-i1',fmt(ixx,2)+' kg·m²');
+    txt('pr-i2',fmt(iyy,2)+' kg·m²');
+    txt('pr-ixy',fmt(ixy,2)+' kg·m²');
+    txt('pr-par',diag?'YES — Principal Axis!':'NO (Cumbersome!)');
+    const pEl=document.getElementById('pr-par'); if(pEl) pEl.style.color=diag?col('ok'):col('tau');
+  });
+  if(!S) return;
+  bind('pr-ang',v=>theta=v,v=>Math.round(v)+'°');
+  bind('pr-body',v=>bodyAng=v,v=>Math.round(v)+'°');
+  document.getElementById('pr-lab').addEventListener('click',()=>{theta=0;if(slA){slA.value='0';slA.dispatchEvent(new Event('input'))}});
+  document.getElementById('pr-snap').addEventListener('click',()=>{theta=bodyAng;if(slA){slA.value=String(bodyAng);slA.dispatchEvent(new Event('input'))}});
+})();
+
+/* ===================================================================
+   05 — OFF-DIAGONAL COUPLING & WHEEL WOBBLE (SLIDES 14–16 & 22)
+   =================================================================== */
+(function(){
+  let mode='coupled', tz=6.0, izx=0.8, psi=0, running=!reduceMotion;
+  const slIzx=document.getElementById('wb-izx');
+  const Ixx=2.0, Izz=2.5;
+  const S=makeScene('wobble','cv-wobble',{yaw:34,pitch:20,dist:6.4,f:2.1,ratio:0.54},function(dt){
+    const g=this.g;
+    const cIzx = mode==='balanced'? 0 : izx;
+    // Solve [I][alpha] = [0, 0, tz]^T for 2x2 x-z block:
+    // Ixx * ax + cIzx * az = 0 => ax = - (cIzx / Ixx) * az
+    // cIzx * ax + Izz * az = tz => (Izz - cIzx^2 / Ixx) * az = tz
+    const det = Ixx*Izz - cIzx*cIzx;
+    const az = (Ixx * tz) / Math.max(0.2, det);
+    const ax = -(cIzx * tz) / Math.max(0.2, det);
+    if(running) psi += dt * (2.2 + az*0.3);
+    this.cx=this.W/2;this.cy=this.H*0.55;
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:3});
+    const O=this.project([0,0,0],B);
+
+    // Wheel wobbles by angle proportional to cIzx/Ixx as it spins
+    const wobbleAng = (cIzx/Ixx)*0.48;
+    const n = unit([wobbleAng*Math.cos(psi), wobbleAng*Math.sin(psi), 1]);
+    let e1=cross(n,[1,0,0]); if(len(e1)<1e-4) e1=cross(n,[0,1,0]); e1=unit(e1);
+    const e2=cross(n,e1), R=1.25;
+
+    // Draw F1 / motorcycle tire rim (two rings + spokes)
+    [-0.18,0.18].forEach(off=>{
+      g.ring(mul(n,off),e1,e2,R,{color:col('fg-2'),w:2.2},64);
+    });
+    for(let k=0;k<6;k++){
+      const a=psi+k*Math.PI/3;
+      const rimP=add(mul(e1,R*Math.cos(a)),mul(e2,R*Math.sin(a)));
+      g.line(O,this.project(rimP,B),{color:col('line'),w:1.4});
+    }
+    // Unbalanced lug masses on rim if coupled
+    if(cIzx>0.02){
+      const m1=add(mul(n,0.18), mul(e1,R)), m2=add(mul(n,-0.18), mul(e1,-R));
+      g.dot(this.project(m1,B),{r:6,color:col('tau'),ring:col('surface')});
+      g.dot(this.project(m2,B),{r:6,color:col('tau'),ring:col('surface')});
+    }
+    // Applied torque tau_z along +z
+    g.arrow(O,this.project([0,0,1.85],B),{color:col('tau'),w:3.4});
+    g.text(this.project([0,0,2.08],B),'τ_z (applied along z)',{size:13,color:col('tau'),halo:true});
+
+    // Resulting angular acceleration vector alpha = (ax cos psi, ax sin psi, az)
+    const alphaVec = [ax*Math.cos(psi), ax*Math.sin(psi), az];
+    const alphaVis = mul(unit(alphaVec), 1.65);
+    g.arrow(O,this.project(alphaVis,B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(alphaVis,1.16),B),'α (tilted by coupling!)',{size:12.5,color:col('omega'),halo:true});
+
+    txt('wb-tvec','(0.0, 0.0, '+fmt(tz,1)+')');
+    txt('wb-az',fmt(az,2)+' rad/s²');
+    txt('wb-axy',fmt(ax,2)+', 0.00 rad/s²');
+    txt('wb-stat',cIzx>0.02?'VIOLENT SHIMMY (α_x ≠ 0)':'SMOOTH (α ∥ τ_z)');
+    const stEl=document.getElementById('wb-stat'); if(stEl) stEl.style.color=cIzx>0.02?col('tau'):col('ok');
+  });
+  if(!S) return;
+  bind('wb-tz',v=>tz=v,v=>v.toFixed(1)+' N·m');
+  bind('wb-izx',v=>izx=v,v=>v.toFixed(2)+' kg·m²');
+  toggleGroup('wb',m=>{mode=m;if(slIzx)slIzx.disabled=(m==='balanced')});
+  playBtn('wb-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   06 — TENSOR RANKS 0 TO 4 (SLIDES 17–22)
+   =================================================================== */
+(function(){
+  let rank=2;
+  const INFO={
+    0:{n:'Rank 0 (Scalar)', idx:'0 indices: [s]', cnt:'3⁰ = 1 component', ex:'Temperature [T], Mass m, Potential'},
+    1:{n:'Rank 1 (Vector)', idx:'1 index: F_i (i = 1,2,3)', cnt:'3¹ = 3 components', ex:'Force F, Velocity v, Torque τ'},
+    2:{n:'Rank 2 (Matrix)', idx:'2 indices: m_ij (bi-directional)', cnt:'3² = 9 components', ex:'Moment of Inertia [I], Stress σ_ij'},
+    3:{n:'Rank 3 (3D Cube)', idx:'3 indices: T_ijk (i, j, k = 1,2,3)', cnt:'3³ = 27 components', ex:'Piezoelectric tensor, Levi-Civita ε_ijk'},
+    4:{n:'Rank 4 (Row of Cubes)', idx:'4 indices: C_ijkl (i, j, k, l)', cnt:'3⁴ = 81 components', ex:'Elasticity tensor C_ijkl, Riemann R_ijkl'}
+  };
+  const S=makeScene('tensors','cv-tensors',{yaw:32,pitch:22,dist:7.2,f:2.1,ratio:0.48,minH:250,maxH:340},function(){
+    const g=this.g;
+    this.cx=this.W/2;this.cy=this.H*0.54;
+    g.clear();
+    const B=this.basis();
+    const sp=0.46;
+
+    function drawCubelet(center, r, colFill){
+      const P=S.project(center,B);
+      g.dot(P,{r:r,color:colFill,ring:col('surface')});
+    }
+
+    if(rank===0){
+      drawCubelet([0,0,0], 16, col('omega'));
+      g.text({x:this.cx,y:this.cy+36},'[ s ] — single number (0 directions)',{size:13,color:col('fg-2')});
+    } else if(rank===1){
+      for(let i=-1;i<=1;i++){
+        drawCubelet([0,0,-i*sp*1.3], 11, col('vvec'));
+        g.text(this.project([0,0.45,-i*sp*1.3],B),'F_'+(i+2),{size:12,mono:true,color:col('fg-2')});
+      }
+      g.arrow(this.project([0,-0.45,sp*1.5],B),this.project([0,-0.45,-sp*1.5],B),{color:col('vvec'),w:2.2});
+      g.text(this.project([0,-0.75,0],B),'index i',{size:12,italic:true,color:col('vvec')});
+    } else if(rank===2){
+      for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
+        const isDiag = (i===j);
+        drawCubelet([0, j*sp*1.25, -i*sp*1.25], 9.5, isDiag?col('rvec'):col('tau'));
+      }
+      g.arrow(this.project([0,-sp*1.8,sp*1.5],B),this.project([0,-sp*1.8,-sp*1.5],B),{color:col('fg-2'),w:2});
+      g.text(this.project([0,-sp*2.2,0],B),'i',{size:13,italic:true,color:col('fg-2')});
+      g.arrow(this.project([0,-sp*1.5,sp*1.8],B),this.project([0,sp*1.5,sp*1.8],B),{color:col('fg-2'),w:2});
+      g.text(this.project([0,0,sp*2.15],B),'j',{size:13,italic:true,color:col('fg-2')});
+    } else if(rank===3){
+      const pts=[];
+      for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){
+        const p=[k*sp, j*sp, -i*sp];
+        pts.push({P:this.project(p,B), c:i===j&&j===k?col('omega'):col('vvec')});
+      }
+      pts.sort((a,b)=>b.P.d-a.P.d);
+      pts.forEach(item=>g.dot(item.P,{r:6.5,color:item.c,ring:col('surface')}));
+      g.text({x:this.cx,y:this.H-18},'3×3×3 Cube (indices i, j, k — Slide 20)',{size:12,color:col('fg-3')});
+    } else {
+      const pts=[];
+      [-1.55, 0, 1.55].forEach((offset,cIdx)=>{
+        const colC = cIdx===0?col('rvec'):cIdx===1?col('vvec'):col('lvec');
+        for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){
+          const p=[k*sp*0.65, offset + j*sp*0.65, -i*sp*0.65];
+          pts.push({P:this.project(p,B), c:colC});
+        }
+      });
+      pts.sort((a,b)=>b.P.d-a.P.d);
+      pts.forEach(item=>g.dot(item.P,{r:4.5,color:item.c,ring:col('surface')}));
+      g.text({x:this.cx,y:this.H-18},'3 cubes along 4th index l (3×3×3×3 = 81 — Slide 21)',{size:12,color:col('fg-3')});
+    }
+    const inf=INFO[rank];
+    txt('rk-num',inf.n); txt('rk-idx',inf.idx); txt('rk-cnt',inf.cnt); txt('rk-ex',inf.ex);
+  });
+  if(!S) return;
+  toggleGroup('rk',v=>rank=parseInt(v,10));
+})();
+
+/* ===================================================================
+   07 — COORDINATE ROTATION LAWS (SLIDES 18–19)
+   =================================================================== */
+(function(){
+  let phi=0;
+  const sl=document.getElementById('tf-ang');
+  const F=[2.0, 1.0, 0.0];
+  // Symmetric Rank-2 tensor with off-diagonal -1.0 that diagonalizes at phi = 45 deg
+  const M=[[3.0, -1.0],[ -1.0, 3.0]];
+  const S=makeScene('transform','cv-transform',{flat:true,orbit:false,ratio:0.42,minH:220,maxH:300},function(){
+    const g=this.g,W=this.W,H=this.H,ctx=this.ctx;
+    g.clear();
+    const cx=W*0.28, cy=H*0.54, R=Math.min(W*0.18,H*0.36);
+    const pR=phi*DEG, c=Math.cos(pR), s=Math.sin(pR);
+
+    // Original axes x, y (grey)
+    g.arrow({x:cx-R,y:cy},{x:cx+R,y:cy},{color:col('line'),w:1.6});
+    g.text({x:cx+R+12,y:cy},'x',{size:12,italic:true,color:col('fg-3')});
+    g.arrow({x:cx,y:cy+R},{x:cx,y:cy-R},{color:col('line'),w:1.6});
+    g.text({x:cx,y:cy-R-10},'y',{size:12,italic:true,color:col('fg-3')});
+
+    // Rotated axes x', y' (amber)
+    const ex=[c,-s], ey=[s,c];
+    g.arrow({x:cx,y:cy},{x:cx+ex[0]*R,y:cy+ex[1]*R},{color:col('omega'),w:2.6});
+    g.text({x:cx+ex[0]*(R+16),y:cy+ex[1]*(R+16)},"x'",{size:13,italic:true,color:col('omega'),halo:true});
+    g.arrow({x:cx,y:cy},{x:cx-ey[0]*R,y:cy-ey[1]*R},{color:col('omega'),w:2.6});
+    g.text({x:cx-ey[0]*(R+16),y:cy-ey[1]*(R+16)},"y'",{size:13,italic:true,color:col('omega'),halo:true});
+
+    // Fixed physical vector F
+    const fScale=R*0.42;
+    g.arrow({x:cx,y:cy},{x:cx+F[0]*fScale,y:cy-F[1]*fScale},{color:col('vvec'),w:3.2});
+    g.text({x:cx+F[0]*fScale+14,y:cy-F[1]*fScale-8},'F',{size:14,italic:true,color:col('vvec'),halo:true});
+
+    // Transformed components:
+    // Rank 1: F'_i = R_ij F_j
+    const Fx_p =  c*F[0] + s*F[1];
+    const Fy_p = -s*F[0] + c*F[1];
+    // Rank 2: m'_ij = R_ik R_jl m_kl
+    const mxx_p = c*c*M[0][0] + 2*c*s*M[0][1] + s*s*M[1][1];
+    const myy_p = s*s*M[0][0] - 2*c*s*M[0][1] + c*c*M[1][1];
+    const mxy_p = (c*c - s*s)*M[0][1] + c*s*(M[1][1] - M[0][0]);
+
+    // Right side display of R_ij matrix
+    const rx=W*0.60, ry=H*0.30;
+    g.text({x:rx+65,y:ry-18},'ROTATION MATRIX R_ij (φ = '+Math.round(phi)+'°)',{size:10.5,color:col('fg-3'),weight:600});
+    const rCells=[[fmt(c,2), fmt(s,2), '0.00'],[fmt(-s,2), fmt(c,2), '0.00'],['0.00','0.00','1.00']];
+    for(let r=0;r<3;r++)for(let c2=0;c2<3;c2++){
+      const xP=rx+c2*66, yP=ry+r*40;
+      ctx.save();ctx.fillStyle=col('surface-2');ctx.strokeStyle=col('line');
+      ctx.beginPath();ctx.rect(xP-27,yP-14,54,28);ctx.fill();ctx.stroke();ctx.restore();
+      g.text({x:xP,y:yP},rCells[r][c2],{size:12,mono:true,color:col('fg')});
+    }
+
+    txt('tf-r1','('+fmt(Fx_p,2)+', '+fmt(Fy_p,2)+', 0.00)');
+    txt('tf-r2d',fmt(mxx_p,2)+', '+fmt(myy_p,2));
+    txt('tf-r2o',fmt(mxy_p,2));
+  });
+  if(!S) return;
+  bind('tf-ang',v=>phi=v,v=>Math.round(v)+'°');
+  toggleGroup('tf',v=>{phi=parseFloat(v);if(sl){sl.value=String(phi);sl.dispatchEvent(new Event('input'))}});
+})();
+
+/* ===================================================================
+   09 — QUIZ
+   =================================================================== */
+(function(){
+  const Q=[
+  {q:'Why does the angular momentum component <span class="m"><span class="lv"><i>L<sub>x</sub></i></span> = <i>I<sub>xx</sub></i><span class="om">ω<sub>x</sub></span> + <i>I<sub>xy</sub></i><span class="om">ω<sub>y</sub></span> + <i>I<sub>xz</sub></i><span class="om">ω<sub>z</sub></span></span> depend on all three components of <span class="m"><span class="vec om">ω</span></span> (Slides 5–6)?',
+   o:['Because expanding the double cross product r_j × m_j(ω × r_j) couples x with y and z whenever products of inertia are non-zero','Because angular velocity is a scalar','Because mass depends on direction','Only when external torque is zero'],a:0,
+   e:'Evaluating <span class="m"><span class="vec rv">r</span><sub><i>j</i></sub> × (<span class="vec om">ω</span> × <span class="vec rv">r</span><sub><i>j</i></sub>)</span> produces diagonal terms <span class="m"><i>m<sub>j</sub></i>(<i>y<sub>j</sub></i>² + <i>z<sub>j</sub></i>²)<span class="om">ω<sub>x</sub></span></span> and off-diagonal terms <span class="m">−<i>m<sub>j</sub>x<sub>j</sub>y<sub>j</sub></i><span class="om">ω<sub>y</sub></span> − <i>m<sub>j</sub>x<sub>j</sub>z<sub>j</sub></i><span class="om">ω<sub>z</sub></span></span>.'},
+  {q:'What is the direct physical consequence of <span class="m">[<i>I</i>]</span> being a matrix in <span class="m">[<span class="lv"><i>L</i></span>] = [<i>I</i>][<span class="om">ω</span>]</span> (Slide 7)?',
+   o:['Angular momentum L and angular velocity ω do not necessarily point in the same direction','L and ω are always perpendicular','Moment of inertia is always zero','Kinetic energy is not conserved'],a:0,
+   e:'Unlike linear momentum <span class="m"><span class="vec vv">p</span> = <i>m</i><span class="vec vv">v</span></span> where scalar mass <span class="m"><i>m</i></span> keeps <span class="m"><span class="vec vv">p</span> ∥ <span class="vec vv">v</span></span>, multiplying <span class="m"><span class="vec om">ω</span></span> by a non-isotropic matrix <span class="m">[<i>I</i>]</span> deflects <span class="m"><span class="vec lv">L</span></span> away from <span class="m"><span class="vec om">ω</span></span>.'},
+  {q:'In the continuous inertia matrix <span class="m">[<i>I</i>]</span> on Slides 9–10, what does the integrand <span class="m">(<i>y</i>² + <i>z</i>²)</span> of the diagonal element <span class="m"><i>I<sub>xx</sub></i> = ∫(<i>y</i>² + <i>z</i>²)<i>dm</i></span> represent?',
+   o:['The square of the perpendicular distance from the mass element dm to the x-axis','The square of the distance from the origin','The mass imbalance in the yz-plane','The distance along the x-axis'],a:0,
+   e:'By the Pythagorean theorem, the perpendicular distance from a point <span class="m">(<i>x, y, z</i>)</span> to the <span class="m"><i>x</i></span>-axis is <span class="m">√(<i>y</i>² + <i>z</i>²)</span>.'},
+  {q:'What do the off-diagonal elements (<span class="m"><i>I<sub>xy</sub></i> = −∫ <i>xy dm</i></span>, etc.) physically measure (Slide 10)?',
+   o:['The imbalance (asymmetry) in the mass distribution across the coordinate axes','The total mass of the rigid body','The distance to the center of mass','The speed of rotation'],a:0,
+   e:'Slide 10 states explicitly: "Off-diagonal elements in the inertia matrix are a measure of the imbalance in the mass distribution."'},
+  {q:'What are the "Principal Axes of Inertia" of a rigid body (Slides 11–13)?',
+   o:['Three mutually perpendicular axes about which all products of inertia (I_xy, I_yz, I_zx) vanish so [I] is diagonal','Any three axes chosen parallel to the walls of the laboratory','Axes about which the diagonal moments I_xx, I_yy, I_zz are zero','Axes where torque is always zero'],a:0,
+   e:'About the principal axes, the off-diagonal products of inertia vanish, <span class="m">[<i>I</i>]</span> is diagonal, and <span class="m"><span class="lv"><i>L<sub>x</sub></i></span> = <i>I<sub>xx</sub></i><span class="om">ω<sub>x</sub></span></span>, <span class="m"><span class="lv"><i>L<sub>y</sub></i></span> = <i>I<sub>yy</sub></i><span class="om">ω<sub>y</sub></span></span>, <span class="m"><span class="lv"><i>L<sub>z</sub></i></span> = <i>I<sub>zz</sub></i><span class="om">ω<sub>z</sub></span></span>.'},
+  {q:'When a rigid body rotates purely around one of its principal axes, how are <span class="m"><span class="vec lv">L</span></span> and <span class="m"><span class="vec om">ω</span></span> related (Slides 11 & 13)?',
+   o:['L and ω are parallel to each other','L and ω are perpendicular','L is zero while ω is non-zero','L precesses in a cone around ω'],a:0,
+   e:'Because the principal axes are eigenvectors of <span class="m">[<i>I</i>]</span> (<span class="m">[<i>I</i>]<span class="vec om">ω</span> = <i>λ</i><span class="vec om">ω</span></span>), <span class="m"><span class="vec lv">L</span></span> points in the exact same direction as <span class="m"><span class="vec om">ω</span></span>.'},
+  {q:'Which mathematical equation is solved to find the principal moments of inertia <span class="m"><i>λ</i> = (<i>I</i>₁, <i>I</i>₂, <i>I</i>₃)</span> (Slide 11)?',
+   o:['det(I − λ 1) = 0 (matrix eigenvalue equation)','trace(I) = 0','I · ω = 0','det(I) = 1'],a:0,
+   e:'The principal moments of inertia are the eigenvalues of the symmetric 3×3 inertia tensor, found via <span class="m">det(<i>I</i> − <i>λ</i><b>1</b>) = 0</span>.'},
+  {q:'According to Slides 14–16 and 22, what happens when you apply a torque <span class="m"><i>τ<sub>z</sub></i></span> along the z-axis to a body that has non-zero off-diagonal terms <span class="m"><i>I<sub>zx</sub></i>, <i>I<sub>zy</sub></i></span>?',
+   o:['Because τ_z = I_zx α_x + I_zy α_y + I_zz α_z, rotation is coupled across axes and angular accelerations α_x, α_y appear around the other axes too','The body accelerates purely around the z-axis','The body refuses to rotate at all','The off-diagonal terms automatically become zero'],a:0,
+   e:'Off-diagonal elements represent bi-directional coupling (<span class="m"><i>Z–X</i></span>, <span class="m"><i>Z–Y</i></span>) between axes, causing wheel wobble and tank-slappers when a wheel is dynamically unbalanced.'},
+  {q:'How is the rank of a tensor defined, and what rank is the Moment of Inertia <span class="m">[<i>I</i>]</span> (Slides 18–22)?',
+   o:['Defined by the number of directions (indices) required to specify a component; Moment of Inertia has 2 indices (I_ij) so it is a Rank-2 tensor','Defined by the spatial dimension; Moment of Inertia is Rank 3','Moment of Inertia is a Rank-1 vector','Moment of Inertia is a Rank-0 scalar'],a:0,
+   e:'Temperature/mass require 0 directions (Rank 0); Force/velocity require 1 direction <span class="m"><i>F<sub>i</sub></i></span> (Rank 1); Moment of inertia requires 2 directions <span class="m"><i>I<sub>ij</sub></i></span> for bi-directional coupling (Rank 2).'},
+  {q:'Under a rotation of coordinates by matrix <span class="m"><i>R<sub>ij</sub></i></span>, how do components of a Rank-1 vector <span class="m"><i>F<sub>i</sub></i></span> and a Rank-2 tensor <span class="m"><i>m<sub>ij</sub></i></span> transform (Slides 18–19)?',
+   o:['F\'_i = R_ij F_j  and  m\'_ij = R_ik R_jl m_kl','F\'_i = F_i  and  m\'_ij = R_ij m_ij','Both transform as R_ij m_j','Neither changes its components under rotation'],a:0,
+   e:'Each tensor index transforms with one factor of the rotation matrix <span class="m"><i>R</i></span>: one factor for Rank 1, two factors (<span class="m"><i>R<sub>ik</sub>R<sub>jl</sub></i></span>) for Rank 2.'}
+  ];
+  const list=document.getElementById('quizlist'); if(!list) return;
+  let answered=0,right=0;
+  const LT='ABCD';
+  Q.forEach((q,i)=>{
+    const el=document.createElement('div');el.className='q';
+    el.innerHTML='<div class="qh"><span class="qn">'+String(i+1).padStart(2,'0')+'</span><span class="qt">'+q.q+'</span></div>'+
+      '<div class="opts"></div><div class="expl" hidden></div>';
+    const opts=el.querySelector('.opts'), expl=el.querySelector('.expl');
+    expl.innerHTML=q.e;
+    const order=q.o.map((text,k)=>({text,k}));
+    for(let j=order.length-1;j>0;j--){const k=(i*7+j*13)%(j+1);const tmp=order[j];order[j]=order[k];order[k]=tmp}
+    order.forEach((o,j)=>{
+      const b=document.createElement('button');b.className='opt';b.type='button';
+      b.innerHTML='<span class="mk">'+LT[j]+'</span><span>'+o.text+'</span>';
+      b.addEventListener('click',()=>{
+        if(el.dataset.done) return; el.dataset.done='1';
+        const correct=o.k===q.a; answered++; if(correct) right++;
+        Array.from(opts.children).forEach((c,ci)=>{
+          c.disabled=true;
+          if(order[ci].k===q.a) c.dataset.state='right';
+          else if(c===b) c.dataset.state='wrong';
+        });
+        expl.hidden=false;
+        const s=document.getElementById('score');
+        if(s) s.textContent=right+' / '+answered+' correct'+(answered===Q.length?'  ·  all done':'');
+      });
+      opts.appendChild(b);
+    });
+    list.appendChild(el);
+  });
+  const s=document.getElementById('score'); if(s) s.textContent='0 of '+Q.length+' answered';
+})();
+
+/* ===================================================================
+   MAIN LOOP
+   =================================================================== */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  for(let i=0;i<SCENES.length;i++){
+    const S=SCENES[i];
+    if(S.section!==current) continue;
+    if(S.cx==null){S.cx=S.W/2;S.cy=S.H/2}
+    try{S.render.call(S,dt)}catch(e){ if(!S._err){console.error('scene',S.cv.id,e);S._err=1} }
+  }
+  requestAnimationFrame(frame);
+}
+show(location.hash.slice(1)||SECTIONS[0].id,false);
+requestAnimationFrame(frame);
+window.addEventListener('load',()=>{SCENES.forEach(S=>S.resize())});
+})();
+</script>
+</body>
+</html>
+
+
+
+
+
