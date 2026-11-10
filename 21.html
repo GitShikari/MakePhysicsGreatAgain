@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  html,body{margin:0}
+  body{font:14px system-ui,-apple-system,sans-serif}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>Rigid Body in Motion · Lecture 21 (Cube Tensor &amp; Principal Axes)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&family=Spline+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F2F7; --surface:#FFFFFF; --surface-2:#E7E9F0; --surface-3:#DCDFE9;
+  --fg:#14161D; --fg-2:#545A69; --fg-3:#838A9A;
+  --line:#D3D7E2; --line-soft:#E3E6EE;
+  --omega:#A96E05; --rvec:#0C7A68; --vvec:#2A4FC8; --lvec:#96298A; --tau:#BC2033;
+  --ok:#14785C; --warn:#9E6300;
+  --shadow:0 1px 2px rgba(20,22,29,.06), 0 8px 24px -12px rgba(20,22,29,.18);
+  --font-display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --font-body:'Spline Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-math:'Crimson Pro',Georgia,'Times New Roman',serif;
+  --font-data:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --rail:262px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--surface)}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100%}
+.rail{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;height:calc(100vh - env(safe-area-inset-top,0px));overflow-y:auto;background:var(--surface);border-right:1px solid var(--line);
+  padding-block:22px 28px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:14px;display:flex;flex-direction:column;gap:18px}
+.rail-head{display:flex;flex-direction:column;gap:3px}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.rail-title{font-family:var(--font-display);font-weight:800;font-size:20px;line-height:1.15;letter-spacing:-.015em;text-wrap:balance}
+nav ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.nav-link{display:grid;grid-template-columns:22px 1fr;gap:9px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:7px 9px;cursor:pointer;color:var(--fg-2);font-family:inherit;font-size:13.5px;line-height:1.3}
+.nav-link .n{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);font-variant-numeric:tabular-nums}
+.nav-link:hover{background:var(--surface-2);color:var(--fg)}
+.nav-link[aria-current="true"]{background:var(--surface-2);color:var(--fg);font-weight:600}
+.nav-link[aria-current="true"] .n{color:var(--omega)}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:9px;font-size:11.5px;color:var(--fg-3);line-height:1.45}
+.theme-btn{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);color:var(--fg-2);border-radius:999px;padding:4px 11px;font:inherit;font-size:11.5px;cursor:pointer}
+.theme-btn:hover{color:var(--fg);border-color:var(--fg-3)}
+
+.main{min-width:0;padding-block:30px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto}
+
+/* mobile tab bar */
+.tabbar{display:none}
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .tabbar{display:block;position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+  .tabbar-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:9px 4px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .tabbar-top .rail-title{font-size:16px}
+  .tabscroll{display:flex;gap:4px;overflow-x:auto;padding-block:0 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scrollbar-width:none}
+  .tabscroll::-webkit-scrollbar{display:none}
+  .tabscroll .nav-link{display:block;white-space:nowrap;border:1px solid var(--line);padding:5px 11px;font-size:12.5px}
+  .tabscroll .nav-link .n{display:none}
+}
+
+/* ---------- type ---------- */
+h2.sec-title{font-family:var(--font-display);font-weight:800;font-size:clamp(26px,4.2vw,38px);line-height:1.06;letter-spacing:-.025em;margin:0;text-wrap:balance}
+h3{font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h4{font-family:var(--font-body);font-weight:600;font-size:13px;letter-spacing:.02em;margin:0;color:var(--fg-2)}
+p{margin:0}
+.lede{font-size:16.5px;color:var(--fg-2);max-width:62ch;line-height:1.62}
+.sec{display:flex;flex-direction:column;gap:24px}
+.sec-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line-soft);padding-bottom:20px}
+.slide-tag{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);letter-spacing:.04em}
+.prose{display:flex;flex-direction:column;gap:12px;max-width:66ch}
+.prose p{color:var(--fg-2)}
+ul.bul{margin:0;padding-left:18px;color:var(--fg-2);display:flex;flex-direction:column;gap:5px}
+
+/* ---------- math ---------- */
+.m{font-family:var(--font-math);font-size:1.12em;line-height:1.35;font-feature-settings:"lnum"}
+.m i,.var{font-style:italic}
+.eq{font-family:var(--font-math);font-size:clamp(18px,2.6vw,22px);line-height:1.5;display:flex;flex-wrap:wrap;align-items:center;gap:.12em;min-width:0}
+.eq.big{font-size:clamp(21px,3.2vw,27px)}
+.vec,.hatv{position:relative;display:inline-block;font-style:italic}
+.vec::after{content:"→";position:absolute;left:-.04em;right:0;top:-.62em;font-size:.56em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.hatv::after{content:"^";position:absolute;left:0;right:0;top:-.44em;font-size:.72em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.frac{display:inline-flex;flex-direction:column;vertical-align:-.46em;text-align:center;margin:0 .14em;font-size:.86em}
+.frac>span{padding:0 .22em;display:block}
+.frac>span:last-child{border-top:1.3px solid currentColor;margin-top:1px}
+sub,sup{font-size:.62em;font-style:normal}
+.om{color:var(--omega)} .rv{color:var(--rvec)} .vv{color:var(--vvec)} .lv{color:var(--lvec)} .tv{color:var(--tau)}
+.eq-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.eq-card .cap{font-size:12.5px;color:var(--fg-3);line-height:1.5}
+.eq-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+
+/* matrices & determinants */
+.det,.mat3,.vec3{display:inline-grid;align-items:center;justify-items:center;padding:4px 10px;margin:0 .22em;vertical-align:middle;font-family:var(--font-math)}
+.det{grid-template-columns:repeat(3,auto);gap:3px 14px;border-left:1.6px solid currentColor;border-right:1.6px solid currentColor}
+.mat3{grid-template-columns:repeat(3,auto);gap:4px 14px;border-left:1.8px solid currentColor;border-right:1.8px solid currentColor;border-radius:6px}
+.vec3{grid-template-columns:auto;gap:4px 6px;border-left:1.8px solid currentColor;border-right:1.8px solid currentColor;border-radius:6px}
+
+/* ---------- panels / viz ---------- */
+.viz{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.viz-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
+.viz-head h3{font-size:14px}
+.stage{position:relative;background:var(--surface);min-width:0}
+canvas{display:block;width:100%;height:auto;touch-action:pan-y}
+.hint{position:absolute;right:9px;bottom:7px;font-size:10.5px;color:var(--fg-3);background:color-mix(in srgb,var(--surface) 82%,transparent);padding:2px 7px;border-radius:5px;pointer-events:none}
+.controls{display:grid;gap:13px 20px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));padding:14px 15px;border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ctl label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ctl label .val{font-family:var(--font-data);font-size:11.5px;color:var(--fg);text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--omega);height:20px;margin:0}
+.btn{background:var(--surface);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--fg-3)}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px}
+.readout{display:grid;gap:10px 18px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));padding:13px 15px;border-top:1px solid var(--line-soft)}
+.ro{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ro .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.ro .v{font-family:var(--font-data);font-size:14px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--fg-2)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:16px;height:3px;border-radius:2px;display:inline-block;flex:none}
+
+/* ---------- derivation stepper ---------- */
+.deriv{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.deriv-steps{list-style:none;margin:0;padding:0}
+.deriv-steps li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;padding:15px 17px;border-top:1px solid var(--line-soft);transition:opacity .25s,filter .25s}
+.deriv-steps li:first-child{border-top:0}
+.deriv-steps li[data-off="1"]{opacity:.28;filter:saturate(.25)}
+.deriv-steps .sn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:6px;font-variant-numeric:tabular-nums}
+.deriv-body{display:flex;flex-direction:column;gap:7px;min-width:0}
+.deriv-body .why{font-size:13px;color:var(--fg-2);line-height:1.52}
+.scrollx{overflow-x:auto;max-width:100%}
+
+/* ---------- misc blocks ---------- */
+.note{border-left:3px solid var(--omega);background:var(--surface);padding:13px 16px;border-radius:0 10px 10px 0;font-size:13.5px;color:var(--fg-2);line-height:1.56}
+.note strong{color:var(--fg)}
+.note.warn{border-left-color:var(--tau)}
+.note.ok{border-left-color:var(--ok)}
+table.cmp{width:100%;border-collapse:collapse;font-size:14px}
+table.cmp th,table.cmp td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+table.cmp thead th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+table.cmp tbody th{font-weight:500;color:var(--fg-2);font-size:13px}
+
+/* ---------- quiz ---------- */
+.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:11px;box-shadow:var(--shadow)}
+.q .qh{display:flex;gap:10px;align-items:baseline}
+.q .qn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);flex:none}
+.q .qt{font-size:15px;line-height:1.5}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;text-align:left;background:var(--surface-2);border:1px solid transparent;border-radius:9px;padding:9px 12px;font:inherit;font-size:14px;color:var(--fg);cursor:pointer;line-height:1.45}
+.opt:hover:not(:disabled){border-color:var(--fg-3)}
+.opt .mk{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:3px;flex:none}
+.opt[data-state="right"]{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface-2))}
+.opt[data-state="wrong"]{border-color:var(--tau);background:color-mix(in srgb,var(--tau) 12%,var(--surface-2))}
+.opt:disabled{cursor:default}
+.expl{font-size:13px;color:var(--fg-2);line-height:1.56;border-left:2px solid var(--line);padding-left:11px}
+.score{position:sticky;bottom:12px;align-self:center;background:var(--fg);color:var(--bg);border-radius:999px;padding:7px 18px;font-size:13px;font-weight:600;box-shadow:var(--shadow);font-variant-numeric:tabular-nums}
+
+/* ---------- formula sheet ---------- */
+.sheet{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.sheet-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 17px;display:flex;flex-direction:column;gap:9px}
+.sheet-card .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sheet-card h4{font-size:12px}
+.jump{background:none;border:0;color:var(--vvec);font:inherit;font-size:11.5px;cursor:pointer;padding:0;white-space:nowrap}
+.jump:hover{text-decoration:underline}
+dl.sym{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;margin:0;font-size:13.5px;align-items:baseline}
+dl.sym dt{font-family:var(--font-math);font-size:16px;color:var(--fg)}
+dl.sym dd{margin:0;color:var(--fg-2)}
+
+.sec[hidden]{display:none !important}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+:focus-visible{outline:2px solid var(--vvec);outline-offset:2px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="rail">
+  <div class="rail-head">
+    <div class="eyebrow">Chapter 4 · Lecture 21</div>
+    <div class="rail-title">Inertia Tensor of a Cube &amp; Finding Principal Axes</div>
+  </div>
+  <nav><ol id="navlist"></ol></nav>
+  <div class="rail-foot">
+    <button class="theme-btn" id="themeBtn" type="button">Theme: system</button>
+    <div>Drag any 3D view to orbit it. Every coloured term in an equation matches the colour of its vector arrow.</div>
+  </div>
+</aside>
+
+<main class="main">
+<div class="tabbar">
+  <div class="tabbar-top">
+    <div class="rail-title">Rigid Body · Lecture 21</div>
+    <button class="theme-btn" id="themeBtn2" type="button">Theme</button>
+  </div>
+  <div class="tabscroll" id="tabscroll"></div>
+</div>
+<div class="wrap">
+
+<!-- ===================== 1. CUBE ABOUT A CORNER (SLIDES 2-4) ===================== -->
+<section class="sec" id="s-corner" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 2–4 · Problem 1</div>
+    <h2 class="sec-title">Inertia tensor of a cube about its corner</h2>
+    <p class="lede">A uniform cube of side <span class="m"><i>L</i></span> and mass <span class="m"><i>M</i></span> sits with its edges along the <span class="m"><i>x, y, z</i></span> axes and one corner at the origin. Every element of <span class="m">[<i>I</i>]</span> is a triple integral over <span class="m">0 ≤ <i>x, y, z</i> ≤ <i>L</i></span> with density <span class="m"><i>ρ</i> = <i>M</i>/<i>L</i><sup>3</sup></span>.</p>
+  </div>
+
+  <div class="deriv" id="d-corner">
+    <div class="viz-head"><h3>Step-by-step integration (Slides 3–4)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-corner" type="button">Back</button><button class="btn primary" data-deriv-next="d-corner" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><i>dm</i> = <i>ρ</i> <i>dx dy dz</i>,&nbsp;&nbsp; <i>ρ</i> = <span class="frac"><span><i>M</i></span><span><i>L</i><sup>3</sup></span></span></span></div><div class="why">The cube is uniform, so mass is spread evenly over volume <span class="m"><i>L</i><sup>3</sup></span>.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><i>I<sub>xx</sub></i> = <i>ρ</i> ∫<sub>0</sub><sup><i>L</i></sup>∫<sub>0</sub><sup><i>L</i></sup>∫<sub>0</sub><sup><i>L</i></sup> (<i>y</i><sup>2</sup> + <i>z</i><sup>2</sup>) <i>dx dy dz</i> = <i>ρ</i> · <i>L</i> · 2 · <i>L</i> · <span class="frac"><span><i>L</i><sup>3</sup></span><span>3</span></span> = <span class="rv"><span class="frac"><span>2</span><span>3</span></span><i>ML</i><sup>2</sup></span></span></div><div class="why">The <span class="m"><i>y</i><sup>2</sup></span> term gives <span class="m"><i>L</i> · (<i>L</i><sup>3</sup>/3) · <i>L</i></span>; the <span class="m"><i>z</i><sup>2</sup></span> term gives the same. By symmetry <span class="m"><i>I<sub>yy</sub></i> = <i>I<sub>zz</sub></i> = <span class="frac"><span>2</span><span>3</span></span><i>ML</i><sup>2</sup></span>.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m"><i>I<sub>xy</sub></i> = −<i>ρ</i> ∫<sub>0</sub><sup><i>L</i></sup><i>x dx</i> ∫<sub>0</sub><sup><i>L</i></sup><i>y dy</i> ∫<sub>0</sub><sup><i>L</i></sup><i>dz</i> = −<i>ρ</i> · <span class="frac"><span><i>L</i><sup>2</sup></span><span>2</span></span> · <span class="frac"><span><i>L</i><sup>2</sup></span><span>2</span></span> · <i>L</i> = <span class="tv">−<span class="frac"><span>1</span><span>4</span></span><i>ML</i><sup>2</sup></span></span></div><div class="why">All mass lies in the first octant (<span class="m"><i>x, y</i> &gt; 0</span>), so <span class="m"><i>xy</i></span> never cancels — products of inertia are <strong>non-zero</strong>. Likewise <span class="m"><i>I<sub>yz</sub></i> = <i>I<sub>zx</sub></i> = −<span class="frac"><span>1</span><span>4</span></span><i>ML</i><sup>2</sup></span>.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="scrollx"><div class="eq big"><span class="m">[<i>I</i>]<sub>corner</sub> = <i>ML</i><sup>2</sup></span><span class="mat3 m"><span class="rv">2/3</span><span class="tv">−1/4</span><span class="tv">−1/4</span><span class="tv">−1/4</span><span class="rv">2/3</span><span class="tv">−1/4</span><span class="tv">−1/4</span><span class="tv">−1/4</span><span class="rv">2/3</span></span><span class="m">= <span class="frac"><span><i>ML</i><sup>2</sup></span><span>12</span></span></span><span class="mat3 m"><span class="rv">8</span><span class="tv">−3</span><span class="tv">−3</span><span class="tv">−3</span><span class="rv">8</span><span class="tv">−3</span><span class="tv">−3</span><span class="tv">−3</span><span class="rv">8</span></span></div></div><div class="why"><strong>Slide 4 result.</strong> The corner frame is <em>not</em> a principal frame: rotating about <span class="m"><i>x</i></span> gives <span class="m"><span class="vec
+ lv">L</span></span> with <span class="m"><i>y</i></span> and <span class="m"><i>z</i></span> components too.</div></div></li>
+    </ol>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Spin the cube about its corner</h3>
+      <div class="btnrow">
+        <button class="btn" data-cw="x" aria-pressed="true" type="button">ω along x-edge</button>
+        <button class="btn" data-cw="face" type="button">ω along face diagonal</button>
+        <button class="btn" data-cw="diag" type="button">ω along body diagonal</button>
+        <button class="btn primary" id="cc-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-corner"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="readout">
+      <div class="ro"><div class="k">ω̂ direction</div><div class="v om" id="cc-w">(1, 0, 0)</div></div>
+      <div class="ro"><div class="k">L / (ML²ω)</div><div class="v lv" id="cc-l">(0.667, −0.250, −0.250)</div></div>
+      <div class="ro"><div class="k">Angle between L and ω</div><div class="v tv" id="cc-ang">35.3°</div></div>
+      <div class="ro"><div class="k">L ∥ ω ?</div><div class="v" id="cc-par">NO</div></div>
+    </div>
+  </div>
+  <div class="note"><strong>Spot the hidden principal axis.</strong> Pick <em>body diagonal</em>: <span class="m">[<i>I</i>](1,1,1) = (2/3 − 1/2)<i>ML</i><sup>2</sup>(1,1,1) = <span class="frac"><span>1</span><span>6</span></span><i>ML</i><sup>2</sup>(1,1,1)</span>. The diagonal is an eigenvector — so <span class="m"><span class="vec lv">L</span> ∥ <span class="vec om">ω</span></span> even about the corner.</div>
+</section>
+
+<!-- ===================== 2. MOVE ORIGIN TO CENTRE (SLIDES 5-9) ===================== -->
+<section class="sec" id="s-center" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 5–9</div>
+    <h2 class="sec-title">Try with origin at the center</h2>
+    <p class="lede">Shift the origin to the centre of the cube so the limits become <span class="m">−<i>L</i>/2 … <i>L</i>/2</span>. Every odd integral <span class="m">∫<i>x dx</i></span> now vanishes — all products of inertia disappear and the tensor becomes a multiple of the identity.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Slide the origin from corner → centre</h3>
+      <div class="btnrow">
+        <button class="btn" id="ct-corner" type="button">Origin at corner</button>
+        <button class="btn primary" id="ct-center" type="button">Origin at centre</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-center"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="ct-s">Origin position along body diagonal <span class="val" id="ct-s-v">0.00 (corner)</span></label><input type="range" id="ct-s" min="0" max="0.5" step="0.01" value="0"></div>
+      <div class="ctl"><label for="ct-th">Polar angle of <span class="m"><span class="vec om">ω</span></span> <span class="val" id="ct-th-v">90°</span></label><input type="range" id="ct-th" min="0" max="90" step="1" value="90"></div>
+      <div class="ctl"><label for="ct-ph">Azimuth of <span class="m"><span class="vec om">ω</span></span> <span class="val" id="ct-ph-v">0°</span></label><input type="range" id="ct-ph" min="0" max="90" step="1" value="0"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">I_xx = I_yy = I_zz  (ML²)</div><div class="v rv" id="ct-d">0.667</div></div>
+      <div class="ro"><div class="k">I_xy = I_yz = I_zx  (ML²)</div><div class="v tv" id="ct-o">−0.250</div></div>
+      <div class="ro"><div class="k">Angle L ↔ ω</div><div class="v" id="ct-ang">35.3°</div></div>
+      <div class="ro"><div class="k">Frame</div><div class="v" id="ct-stat">Coupled</div></div>
+    </div>
+  </div>
+
+  <div class="eq-grid">
+    <div class="eq-card">
+      <h4>Diagonal (Slide 7)</h4>
+      <div class="eq"><span class="m"><i>I<sub>xx</sub></i> = <i>ρ</i>∫∫∫<sub>−<i>L</i>/2</sub><sup><i>L</i>/2</sup>(<i>y</i><sup>2</sup>+<i>z</i><sup>2</sup>)<i>dV</i> = <span class="rv"><span class="frac"><span>1</span><span>6</span></span><i>ML</i><sup>2</sup></span></span></div>
+      <div class="cap"><span class="m">∫<sub>−<i>L</i>/2</sub><sup><i>L</i>/2</sup><i>y</i><sup>2</sup><i>dy</i> = <i>L</i><sup>3</sup>/12</span>, doubled for <span class="m"><i>z</i><sup>2</sup></span>.</div>
+    </div>
+    <div class="eq-card">
+      <h4>Off-diagonal (Slide 7)</h4>
+      <div class="eq"><span class="m"><i>I<sub>xy</sub></i> = −<i>ρ</i>∫<sub>−<i>L</i>/2</sub><sup><i>L</i>/2</sup><i>x dx</i>∫<sub>−<i>L</i>/2</sub><sup><i>L</i>/2</sup><i>y dy</i>∫<i>dz</i> = <span class="tv">0</span></span></div>
+      <div class="cap">Odd integrand over a symmetric interval → zero.</div>
+    </div>
+    <div class="eq-card">
+      <h4>Result (Slide 8)</h4>
+      <div class="eq"><span class="m">[<i>I</i>]<sub>centre</sub> = <span class="frac"><span><i>ML</i><sup>2</sup></span><span>6</span></span></span><span class="mat3 m"><span class="rv">1</span><span>0</span><span>0</span><span>0</span><span class="rv">1</span><span>0</span><span>0</span><span>0</span><span class="rv">1</span></span></div>
+      <div class="cap">Diagonal <em>and</em> isotropic — every axis through the centre is principal.</div>
+    </div>
+  </div>
+  <div class="note ok"><strong>Slide 9 — rotation along two different axes.</strong> With a diagonal tensor, <span class="m"><span class="vec lv">L</span> ∥ <span class="vec om">ω</span></span> <em>provided the axis of rotation is along one of the coordinate axes</em>. For the cube about its centre the three moments are equal, so in fact <strong>any</strong> axis works — drag the <span class="m"><span class="vec om">ω</span></span> sliders with the origin at the centre and the angle stays 0°.</div>
+</section>
+
+<!-- ===================== 3. DUMBBELL EXAMPLES (SLIDES 10-14) ===================== -->
+<section class="sec" id="s-dumbbell" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 10–14 · Examples</div>
+    <h2 class="sec-title">Two masses: aligned vs. tilted</h2>
+    <p class="lede">Two point masses <span class="m"><i>m</i></span> on a massless rod lie in the <span class="m"><i>xy</i></span>-plane. At <span class="m">(1,0), (−1,0)</span> the tensor is diagonal; tilt them to <span class="m">(1,1), (−1,−1)</span> and the product <span class="m"><i>I<sub>xy</sub></i> = −Σ<i>m x y</i> = −2<i>m</i></span> appears, so <span class="m"><span class="vec lv">L</span></span> and <span class="m"><span class="vec om">ω</span></span> — and <span class="m"><span class="vec tv">τ</span></span> and <span class="m"><span class="vec">α</span></span> — separate.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Tilt the dumbbell, spin about x</h3>
+      <div class="btnrow">
+        <button class="btn" data-db="0" type="button">Example 1: (1,0), (−1,0)</button>
+        <button class="btn" data-db="45" aria-pressed="true" type="button">Example 2: (1,1), (−1,−1)</button>
+        <button class="btn primary" id="db-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-dumbbell"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="db-phi">Rod tilt in xy-plane <span class="val" id="db-phi-v">45°</span></label><input type="range" id="db-phi" min="0" max="90" step="1" value="45"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">I_xx, I_yy, I_zz  (m)</div><div class="v rv" id="db-diag">2.00, 2.00, 4.00</div></div>
+      <div class="ro"><div class="k">I_xy = −Σ m x y  (m)</div><div class="v tv" id="db-ixy">−2.00</div></div>
+      <div class="ro"><div class="k">L for ω = ω x̂  (mω)</div><div class="v lv" id="db-l">(2.00, −2.00, 0)</div></div>
+      <div class="ro"><div class="k">L ∥ ω ?</div><div class="v" id="db-par">NO</div></div>
+    </div>
+  </div>
+
+  <div class="eq-grid">
+    <div class="eq-card">
+      <h4>Example 1 (Slides 10–11)</h4>
+      <div class="eq"><span class="m">[<i>I</i>] = <i>m</i></span><span class="mat3 m"><span>0</span><span>0</span><span>0</span><span>0</span><span>2</span><span>0</span><span>0</span><span>0</span><span>2</span></span></div>
+      <div class="cap">Diagonal: <span class="m"><span class="lv"><i>L</i><sub>z</sub></span> = 2<i>m</i><span class="om">ω<sub>z</sub></span></span>, <span class="m"><span class="tv"><i>τ</i><sub>y</sub></span> = 2<i>m</i><i>α<sub>y</sub></i></span> — no coupling.</div>
+    </div>
+    <div class="eq-card">
+      <h4>Example 2 (Slides 12–13)</h4>
+      <div class="eq"><span class="m">[<i>I</i>] = <i>m</i></span><span class="mat3 m"><span>2</span><span class="tv">−2</span><span>0</span><span class="tv">−2</span><span>2</span><span>0</span><span>0</span><span>0</span><span>4</span></span></div>
+      <div class="cap">Spin about <span class="m"><i>x</i></span> gives <span class="m"><span class="vec lv">L</span> = 2<i>mω</i>(1, −1, 0)</span> — tilted 45° away from <span class="m"><span class="vec om">ω</span></span>.</div>
+    </div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head"><h3>Slide 14 — push with F<sub>z</sub> and find α</h3></div>
+    <div class="stage"><canvas id="cv-push"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="pu-x">Point of application <span class="m"><i>x</i></span> along rod <span class="val" id="pu-x-v">1.00</span></label><input type="range" id="pu-x" min="-1.4" max="1.4" step="0.05" value="1"></div>
+      <div class="ctl"><label for="pu-f">Force <span class="m"><i>F<sub>z</sub></i></span> <span class="val" id="pu-f-v">4.0 N</span></label><input type="range" id="pu-f" min="-8" max="8" step="0.5" value="4"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">τ = r × F = (F_z y, −F_z x, 0)</div><div class="v tv" id="pu-t">(0, −4.00, 0)</div></div>
+      <div class="ro"><div class="k">I_yy (rod on x-axis, ±√2)</div><div class="v rv">4m</div></div>
+      <div class="ro"><div class="k">α_y = −x F_z / 4m  (m = 1)</div><div class="v om" id="pu-a">−1.00 rad/s²</div></div>
+    </div>
+    <div class="eq-card" style="border:0;box-shadow:none;border-top:1px solid var(--line-soft);border-radius:0">
+      <div class="eq"><span class="m"><span class="vec tv">τ</span> = <span class="vec rv">r</span> × <span class="vec">F</span> = </span><span class="det m"><span class="hatv">i</span><span class="hatv">j</span><span class="hatv">k</span><span><i>x</i></span><span><i>y</i></span><span>0</span><span>0</span><span>0</span><span><i>F<sub>z</sub></i></span></span><span class="m">= <i>F<sub>z</sub>y</i> <span class="hatv">i</span> − <i>F<sub>z</sub>x</i> <span class="hatv">j</span>&nbsp;&nbsp;⟹&nbsp;&nbsp;<span class="om"><i>α<sub>y</sub></i></span> = <span class="frac"><span>−<i>xF<sub>z</sub></i></span><span>4<i>m</i></span></span></span></div>
+      <div class="cap">With the system rotated into the <span class="m"><i>x</i>–<i>z</i></span> plane (masses at <span class="m">(±√2, 0)</span>) the tensor is diagonal with <span class="m"><i>I<sub>yy</sub></i> = 4<i>m</i></span>, so <span class="m"><i>τ<sub>y</sub></i> = <i>I<sub>yy</sub>α<sub>y</sub></i></span> directly. In the tilted frame the same physics needs the full coupled matrix.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 4. EIGENVALUE METHOD (SLIDES 15-23) ===================== -->
+<section class="sec" id="s-method" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 15–23</div>
+    <h2 class="sec-title">How to find the principal axis?</h2>
+    <p class="lede">If <span class="m"><span class="vec lv">L</span></span> and <span class="m"><span class="vec om">ω</span></span> are parallel one can write <span class="m"><span class="vec lv">L</span> = <i>λ</i><span class="vec om">ω</span></span>. For simple geometries the principal axes are obvious by symmetry; in general we need the mathematical approach — eigenvalues and eigenvectors of <span class="m">[<i>I</i>]</span>.</p>
+  </div>
+
+  <div class="deriv" id="d-method">
+    <div class="viz-head"><h3>Two-step recipe</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-method" type="button">Back</button><button class="btn primary" data-deriv-next="d-method" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq big"><span class="m">[<i>I</i>]<span class="vec om">ω</span> = <span class="vec lv">L</span> = <i>λ</i><span class="vec om">ω</span></span></div><div class="why"><strong>Step 1 (Slide 17):</strong> impose the condition that makes <span class="m"><span class="vec lv">L</span></span> and <span class="m"><span class="vec om">ω</span></span> parallel. Unknowns: the direction of <span class="m"><span class="vec om">ω</span></span> and the scalar <span class="m"><i>λ</i></span>.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq big"><span class="m">[<i>I</i>]<span class="vec om">ω</span> = <i>λ</i>[<b>1</b>]<span class="vec om">ω</span> &nbsp;⟹&nbsp; ([<i>I</i>] − <i>λ</i>[<b>1</b>])<span class="vec om">ω</span> = 0</span></div><div class="why"><strong>Slide 18:</strong> insert a unit matrix so both sides are matrices acting on <span class="m"><span class="vec om">ω</span></span>.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq big"><span class="m">det([<i>I</i>] − <i>λ</i>[<b>1</b>]) = 0</span></div><div class="why"><strong>Slide 19 — characteristic equation.</strong> Theorem: if <span class="m">[<i>A</i>][<i>x</i>] = 0</span> has a non-zero solution, <span class="m">[<i>A</i>]</span> is non-invertible, so <span class="m">|<i>A</i>| = 0</span>.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq"><span class="m"><i>λ</i> = <i>λ</i><sub>1</sub>, <i>λ</i><sub>2</sub>, <i>λ</i><sub>3</sub> &nbsp;→&nbsp; ([<i>I</i>] − <i>λ<sub>k</sub></i>[<b>1</b>])<span class="vec om">ω</span><sub>k</sub> = 0</span></div><div class="why"><strong>Slides 20–21:</strong> the cubic gives three <em>eigenvalues</em>; substituting each one back and solving for <span class="m"><span class="om">ω</span></span>'s gives the <em>eigenvectors</em> — the principal axes.</div></div></li>
+      <li><div class="sn">05</div><div class="deriv-body"><div class="scrollx"><div class="eq big"><span class="m"><i>D</i> = <i>P</i><sup>−1</sup>[<i>I</i>]<i>P</i> = </span><span class="mat3 m"><span class="rv"><i>λ</i><sub>1</sub></span><span>0</span><span>0</span><span>0</span><span class="rv"><i>λ</i><sub>2</sub></span><span>0</span><span>0</span><span>0</span><span class="rv"><i>λ</i><sub>3</sub></span></span></div></div><div class="why"><strong>Step 2 (Slides 22–23):</strong> choose the eigenvector directions as the new coordinate axes. The diagonalisation theorem (MA102), with <span class="m"><i>P</i></span> = matrix of eigenvectors, rotates the axes so that the eigenvalues sit on the diagonal — the principal moments.</div></div></li>
+    </ol>
+  </div>
+  <div class="note"><strong>Why "parallel" is the key condition.</strong> Rotation about a principal axis needs no extra torque to keep the axis fixed: <span class="m"><span class="vec lv">L</span></span> is along <span class="m"><span class="vec om">ω</span></span>, so a body spinning steadily has constant <span class="m"><span class="vec lv">L</span></span> — no wobble.</div>
+</section>
+
+<!-- ===================== 5. WORKED EXAMPLE (SLIDES 24-34) ===================== -->
+<section class="sec" id="s-example" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 24–34 · Let us try one example</div>
+    <h2 class="sec-title">Eigenvalues, eigenvectors &amp; the diagonal tensor</h2>
+    <p class="lede">For an unknown rigid body in the <span class="m"><i>xy</i></span>-plane we are given <span class="m">[<i>I</i>] = </span><span class="mat3 m" style="grid-template-columns:repeat(2,auto)"><span>2</span><span class="tv">−1</span><span class="tv">−1</span><span>2</span></span>. Steer <span class="m"><span class="vec om">ω</span></span> until <span class="m"><span class="vec lv">L</span></span> lines up with it — those directions are the eigenvectors. Change the matrix to experiment.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Hunt for L ∥ ω</h3>
+      <div class="btnrow">
+        <button class="btn" id="ex-e1" type="button">Snap to eigenvector 1</button>
+        <button class="btn" id="ex-e2" type="button">Snap to eigenvector 2</button>
+        <button class="btn" id="ex-rot" aria-pressed="false" type="button">Rotate axes to principal</button>
+        <button class="btn primary" id="ex-reset" type="button">Slide example</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-example"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="ex-ang">Direction of <span class="m"><span class="vec om">ω</span></span> <span class="val" id="ex-ang-v">20°</span></label><input type="range" id="ex-ang" min="0" max="180" step="1" value="20"></div>
+      <div class="ctl"><label for="ex-a"><span class="m"><i>I<sub>xx</sub></i></span> <span class="val" id="ex-a-v">2.0</span></label><input type="range" id="ex-a" min="0.5" max="4" step="0.1" value="2"></div>
+      <div class="ctl"><label for="ex-b"><span class="m"><i>I<sub>yy</sub></i></span> <span class="val" id="ex-b-v">2.0</span></label><input type="range" id="ex-b" min="0.5" max="4" step="0.1" value="2"></div>
+      <div class="ctl"><label for="ex-c"><span class="m"><i>I<sub>xy</sub></i></span> <span class="val" id="ex-c-v">−1.0</span></label><input type="range" id="ex-c" min="-1.5" max="1.5" step="0.1" value="-1"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Characteristic eq.</div><div class="v" id="ex-char">λ² − 4λ + 3 = 0</div></div>
+      <div class="ro"><div class="k">
+Eigenvalues λ₁, λ₂</div><div class="v rv" id="ex-eig">1.00, 3.00</div></div>
+      <div class="ro"><div class="k">Eigenvectors</div><div class="v om" id="ex-vec">(0.71, 0.71), (−0.71, 0.71)</div></div>
+      <div class="ro"><div class="k">Angle L ↔ ω</div><div class="v tv" id="ex-angLW">—</div></div>
+    </div>
+  </div>
+
+  <div class="deriv" id="d-example">
+    <div class="viz-head"><h3>Worked solution (Slides 26–34)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-example" type="button">Back</button><button class="btn primary" data-deriv-next="d-example" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="mat3 m" style="grid-template-columns:repeat(2,auto)"><span>2</span><span>−1</span><span>−1</span><span>2</span></span><span class="vec3 om"><span><i>ω<sub>x</sub></i></span><span><i>ω<sub>y</sub></i></span></span><span class="m">= <i>λ</i></span><span class="vec3 om"><span><i>ω<sub>x</sub></i></span><span><i>ω<sub>y</sub></i></span></span></div><div class="why">Slide 26: apply the condition <span class="m">[<i>I</i>]<span class="vec om">ω</span> = <i>λ</i><span class="vec om">ω</span></span> to the given tensor.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m">det</span><span class="det m" style="grid-template-columns:repeat(2,auto)"><span>2 − <i>λ</i></span><span>−1</span><span>−1</span><span>2 − <i>λ</i></span></span><span class="m">= (2 − <i>λ</i>)<sup>2</sup> − 1 = <i>λ</i><sup>2</sup> − 4<i>λ</i> + 3 = 0</span></div><div class="why">Slide 27: characteristic equation → <span class="m"><i>λ</i><sub>1</sub> = 1, <i>λ</i><sub>2</sub> = 3</span>.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m"><i>λ</i><sub>1</sub> = 1: &nbsp;<i>ω<sub>x</sub></i> − <i>ω<sub>y</sub></i> = 0 &nbsp;⟹&nbsp; <span class="om"><span class="hatv">e</span><sub>1</sub> = <span class="frac"><span>1</span><span>√2</span></span>(1, 1)</span></span></div><div class="why">Slide 28: the line <span class="m"><i>y</i> = <i>x</i></span>.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq"><span class="m"><i>λ</i><sub>2</sub> = 3: &nbsp;<i>ω<sub>x</sub></i> + <i>ω<sub>y</sub></i> = 0 &nbsp;⟹&nbsp; <span class="om"><span class="hatv">e</span><sub>2</sub> = <span class="frac"><span>1</span><span>√2</span></span>(−1, 1)</span></span></div><div class="why">Slides 29–30: the line <span class="m"><i>y</i> = −<i>x</i></span>, perpendicular to <span class="m"><span class="hatv">e</span><sub>1</sub></span> (eigenvectors of a symmetric matrix are orthogonal).</div></div></li>
+      <li><div class="sn">05</div><div class="deriv-body"><div class="eq big"><span class="m"><i>D</i> = </span><span class="mat3 m" style="grid-template-columns:repeat(2,auto)"><span class="rv">1</span><span>0</span><span>0</span><span class="rv">3</span></span><span class="m">&nbsp;⟹&nbsp; <span class="lv"><i>L</i><sub>1</sub></span> = 1·<span class="om">ω<sub>1</sub></span>, &nbsp;<span class="lv"><i>L</i><sub>2</sub></span> = 3·<span class="om">ω<sub>2</sub></span></span></div><div class="why">Slides 31–34: [I] is still not diagonal in <span class="m"><i>xy</i></span>. Rotating the axes by 45° onto <span class="m"><span class="hatv">e</span><sub>1</sub>, <span class="hatv">e</span><sub>2</sub></span> writes the eigenvalues on the diagonal — the principal-axis tensor.</div></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== 6. FORMULA SHEET ===================== -->
+<section class="sec" id="s-sheet" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Every equation in Lecture 21</div>
+    <h2 class="sec-title">Formula sheet</h2>
+    <p class="lede">Key results from 21.pptx (Slides 1–34), linked to their interactive visualisers.</p>
+  </div>
+  <div class="sheet">
+    <div class="sheet-card"><div class="top"><h4>Cube about a corner</h4><button class="jump" data-goto="corner" type="button">section 01 →</button></div><div class="eq"><span class="m"><i>I<sub>xx</sub></i> = <span class="frac"><span>2</span><span>3</span></span><i>ML</i><sup>2</sup>, &nbsp;<i>I<sub>xy</sub></i> = −<span class="frac"><span>1</span><span>4</span></span><i>ML</i><sup>2</sup></span></div><div class="cap">Same for all diagonal / off-diagonal entries by symmetry.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Cube about its centre</h4><button class="jump" data-goto="center" type="button">section 02 →</button></div><div class="eq"><span class="m">[<i>I</i>] = <span class="frac"><span>1</span><span>6</span></span><i>ML</i><sup>2</sup>[<b>1</b>]</span></div><div class="cap">Products of inertia vanish; every axis is principal.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Torque from a z-force</h4><button class="jump" data-goto="dumbbell" type="button">section 03 →</button></div><div class="eq"><span class="m"><span class="vec tv">τ</span> = <i>F<sub>z</sub>y</i><span class="hatv">i</span> − <i>F<sub>z</sub>x</i><span class="hatv">j</span>, &nbsp;<i>α<sub>y</sub></i> = −<i>xF<sub>z</sub></i>/4<i>m</i></span></div><div class="cap">Dumbbell rotated into the x–z plane.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Parallel condition</h4><button class="jump" data-goto="method" type="button">section 04 →</button></div><div class="eq"><span class="m">[<i>I</i>]<span class="vec om">ω</span> = <i>λ</i><span class="vec om">ω</span></span></div><div class="cap"><span class="m"><span class="vec lv">L</span> ∥ <span class="vec om">ω</span></span> ⇔ <span class="m"><span class="vec om">ω</span></span> is an eigenvector.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Characteristic equation</h4><button class="jump" data-goto="method" type="button">section 04 →</button></div><div class="eq"><span class="m">det([<i>I</i>] − <i>λ</i>[<b>1</b>]) = 0</span></div><div class="cap">Roots = principal moments <span class="m"><i>λ</i><sub>1</sub>, <i>λ</i><sub>2</sub>, <i>λ</i><sub>3</sub></span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Diagonalisation</h4><button class="jump" data-goto="example" type="button">section 05 →</button></div><div class="eq"><span class="m"><i>D</i> = <i>P</i><sup>−1</sup>[<i>I</i>]<i>P</i> = diag(<i>λ</i><sub>1</sub>, <i>λ</i><sub>2</sub>, <i>λ</i><sub>3</sub>)</span></div><div class="cap"><span class="m"><i>P</i></span> = eigenvectors as columns.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Slide example</h4><button class="jump" data-goto="example" type="button">section 05 →</button></div><div class="eq"><span class="m"><i>λ</i> = 1 ↔ (1,1)/√2, &nbsp;<i>λ</i> = 3 ↔ (−1,1)/√2</span></div><div class="cap">For <span class="m">[<i>I</i>] = [[2, −1], [−1, 2]]</span>.</div></div>
+  </div>
+</section>
+
+<!-- ===================== 7. QUIZ ===================== -->
+<section class="sec" id="s-quiz" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Self-check</div>
+    <h2 class="sec-title">Ten questions on Lecture 21</h2>
+    <p class="lede">Test your understanding of the cube tensor, origin choice, coupling examples and the eigenvalue method.</p>
+  </div>
+  <div id="quizlist" style="display:flex;flex-direction:column;gap:14px"></div>
+  <div class="score" id="score">0 answered</div>
+</section>
+
+</div>
+</main>
+</div>
+
+
+<script>
+(function(){
+"use strict";
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const unit=a=>{const L=len(a)||1;return mul(a,1/L)};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const DEG=Math.PI/180;
+const fmt=(v,n)=>{const s=v.toFixed(n);return (Object.is(parseFloat(s),-0)||s==="-"+(0).toFixed(n))?(0).toFixed(n):s};
+function matVec(A,v){return [A[0][0]*v[0]+A[0][1]*v[1]+A[0][2]*v[2],A[1][0]*v[0]+A[1][1]*v[1]+A[1][2]*v[2],A[2][0]*v[0]+A[2][1]*v[1]+A[2][2]*v[2]]}
+
+/* ============ theme colours ============ */
+let CSS_CACHE={},cssStamp=0;
+function col(name){
+  if(!(name in CSS_CACHE)) CSS_CACHE[name]=getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim()||'#888';
+  return CSS_CACHE[name];
+}
+function flushColours(){CSS_CACHE={};cssStamp++;}
+try{ if(window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',flushColours);}catch(e){}
+new MutationObserver(flushColours).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ============ scene registry + 3D canvas ============ */
+const SCENES=[];
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function makeScene(section, canvasId, opt, renderFn){
+  const cv=document.getElementById(canvasId); if(!cv) return null;
+  const ctx=cv.getContext('2d');
+  const o=Object.assign({ratio:0.56,minH:260,maxH:430,yaw:36,pitch:22,dist:6.5,f:2.1,orbit:true,flat:false},opt);
+  const S={cv,ctx,section,yaw:o.yaw,pitch:o.pitch,dist:o.dist,f:o.f,W:600,H:340,t:0,playing:true,opt:o,data:{}};
+
+  function resize(){
+    const w=Math.max(220,cv.parentElement.clientWidth);
+    const h=clamp(Math.round(w*o.ratio),o.minH,o.maxH);
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+    cv.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    S.W=w;S.H=h;S.dirty=true;
+  }
+  S.resize=resize;
+  try{new ResizeObserver(resize).observe(cv.parentElement)}catch(e){window.addEventListener('resize',resize)}
+  resize();
+
+  if(o.orbit && !o.flat){
+    let dragging=false,lx=0,ly=0;
+    const down=e=>{dragging=true;const p=e.touches?e.touches[0]:e;lx=p.clientX;ly=p.clientY;cv.style.cursor='grabbing'};
+    const move=e=>{if(!dragging)return;const p=e.touches?e.touches[0]:e;
+      S.yaw-=(p.clientX-lx)*0.42;S.pitch=clamp(S.pitch+(p.clientY-ly)*0.35,-86,86);lx=p.clientX;ly=p.clientY;
+      if(e.cancelable&&e.touches)e.preventDefault();S.dirty=true};
+    const up=()=>{dragging=false;cv.style.cursor='grab'};
+    cv.style.cursor='grab';
+    cv.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+    cv.addEventListener('touchstart',down,{passive:true});cv.addEventListener('touchmove',move,{passive:false});
+    window.addEventListener('touchend',up);
+  }
+
+  S.basis=function(){
+    const pr=S.pitch*DEG, yw=S.yaw*DEG;
+    const ez=[Math.cos(pr)*Math.cos(yw),Math.cos(pr)*Math.sin(yw),Math.sin(pr)];
+    let ex=cross([0,0,1],ez); if(len(ex)<1e-6) ex=[1,0,0]; ex=unit(ex);
+    const ey=cross(ez,ex);
+    return {ex,ey,ez};
+  };
+  S.project=function(p,B){
+    B=B||S.basis();
+    const depth=S.dist-dot(p,B.ez);
+    const k=(S.f*Math.min(S.W,S.H*1.5)/2)/Math.max(depth,0.25);
+    return {x:S.cx+dot(p,B.ex)*k, y:S.cy-dot(p,B.ey)*k, d:depth, k:k};
+  };
+
+  const g={};
+  g.clear=()=>{ctx.clearRect(0,0,S.W,S.H)};
+  g.line=(A,B2,st)=>{st=st||{};ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x,B2.y);ctx.stroke();ctx.restore()};
+  g.path=(pts,st)=>{st=st||{};if(pts.length<2)return;ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+    if(st.close)ctx.closePath(); if(st.fill){ctx.fillStyle=st.fill;ctx.fill()} if(st.color!=='none')ctx.stroke();ctx.restore()};
+  g.arrow=(A,B2,st)=>{st=st||{};const c=st.color||col('fg');const w=st.w||2.4;
+    const dx=B2.x-A.x,dy=B2.y-A.y,L=Math.hypot(dx,dy);if(L<0.5)return;
+    const hs=Math.max(7,Math.min(13,L*0.26)),ux=dx/L,uy=dy/L;
+    ctx.save();ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x-ux*hs*0.75,B2.y-uy*hs*0.75);ctx.stroke();
+    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(B2.x,B2.y);
+    ctx.lineTo(B2.x-ux*hs+(-uy)*hs*0.40,B2.y-uy*hs+(ux)*hs*0.40);
+    ctx.lineTo(B2.x-ux*hs-(-uy)*hs*0.40,B2.y-uy*hs-(ux)*hs*0.40);
+    ctx.closePath();ctx.fill();ctx.restore()};
+  g.dot=(P,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg');ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.arc(P.x,P.y,st.r||4,0,6.2832);ctx.fill();
+    if(st.ring){ctx.strokeStyle=st.ring;ctx.lineWidth=1.6;ctx.stroke()}ctx.restore()};
+  g.text=(P,s,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg-2');
+    ctx.font=(st.italic?'italic ':'')+(st.weight||600)+' '+(st.size||12)+'px '+(st.mono?"ui-monospace,Menlo,Consolas,monospace":"'Spline Sans',system-ui,sans-serif");
+    ctx.textAlign=st.align||'center';ctx.textBaseline=st.base||'middle';ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    if(st.halo){ctx.lineWidth=3.4;ctx.strokeStyle=col('surface');ctx.lineJoin='round';ctx.strokeText(s,P.x+(st.dx||0),P.y+(st.dy||0))}
+    ctx.fillText(s,P.x+(st.dx||0),P.y+(st.dy||0));ctx.restore()};
+  g.ring=(center,u,v,R,st,n,a0,a1)=>{
+    n=n||72;a0=a0==null?0:a0;a1=a1==null?Math.PI*2:a1;const B=S.basis();const pts=[];
+    for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;pts.push(S.project(add(center,add(mul(u,R*Math.cos(a)),mul(v,R*Math.sin(a)))),B))}
+    g.path(pts,st)};
+  S.g=g;
+
+  S.render=renderFn;
+  SCENES.push(S);
+  return S;
+}
+
+function drawAxes(S,opt){
+  const g=S.g,B=S.basis(),o=Object.assign({size:2.0,grid:true,labels:['x','y','z'],gridN:3,plane:'xy'},opt||{});
+  const O=S.project([0,0,0],B);
+  if(o.grid){
+    const n=o.gridN,st={color:col('line'),w:1,alpha:.85};
+    for(let i=-n;i<=n;i++){
+      const f=i/n*o.size;
+      if(o.plane==='xy'){g.line(S.project([f,-o.size,0],B),S.project([f,o.size,0],B),st);g.line(S.project([-o.size,f,0],B),S.project([o.size,f,0],B),st)}
+      else{g.line(S.project([f,0,-o.size],B),S.project([f,0,o.size],B),st);g.line(S.project([-o.size,0,f],B),S.project([o.size,0,f],B),st)}
+    }
+  }
+  const L=o.size*1.12, ax=[[L,0,0],[0,L,0],[0,0,L]];
+  for(let i=0;i<3;i++){
+    if(o.labels[i]===null) continue;
+    const P=S.project(ax[i],B);
+    g.line(O,P,{color:col('fg-3'),w:1.3,alpha:.95});
+    g.text(P,o.labels[i],{color:col('fg-3'),size:12.5,dx:9,dy:-7,italic:true,halo:true});
+  }
+  return B;
+}
+
+
+/* ============ navigation ============ */
+const SECTIONS=[
+  {id:'corner',   label:'Cube about a corner'},
+  {id:'center',   label:'Origin at the centre'},
+  {id:'dumbbell', label:'Two-mass examples'},
+  {id:'method',   label:'How to find principal axes'},
+  {id:'example',  label:'Eigenvalue worked example'},
+  {id:'sheet',    label:'Formula sheet'},
+  {id:'quiz',     label:'Self-check quiz'}
+];
+let current=SECTIONS[0].id;
+const navlist=document.getElementById('navlist'),tabscroll=document.getElementById('tabscroll');
+SECTIONS.forEach((s,i)=>{
+  const n=String(i+1).padStart(2,'0');
+  const li=document.createElement('li');
+  li.innerHTML='<button class="nav-link" type="button" data-goto="'+s.id+'"><span class="n">'+n+'</span><span>'+s.label+'</span></button>';
+  navlist.appendChild(li);
+  const b=document.createElement('button');
+  b.className='nav-link';b.type='button';b.dataset.goto=s.id;b.innerHTML='<span class="n">'+n+'</span><span>'+s.label+'</span>';
+  tabscroll.appendChild(b);
+});
+function show(id,push){
+  if(!SECTIONS.some(s=>s.id===id)) id=SECTIONS[0].id;
+  current=id;
+  SECTIONS.forEach(s=>{const el=document.getElementById('s-'+s.id); if(el) el.hidden = s.id!==id});
+  document.querySelectorAll('[data-goto]').forEach(b=>{if(b.classList.contains('nav-link'))b.setAttribute('aria-current',String(b.dataset.goto===id))});
+  if(push && location.hash.slice(1)!==id){try{location.hash=id}catch(e){}}
+  SCENES.forEach(S=>{if(S.section===id){S.resize();S.dirty=true}});
+  const act=tabscroll.querySelector('[data-goto="'+id+'"]'); if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'center'});
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-goto]'); if(!b)return;
+  show(b.dataset.goto,true);
+  if(!b.classList.contains('nav-link')) window.scrollTo({top:0,behavior:reduceMotion?'auto':'smooth'});
+});
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)||SECTIONS[0].id,false));
+
+/* ============ theme toggle ============ */
+const THEMES=['system','light','dark'];
+let ti=0;
+try{const st=localStorage.getItem('rbm21-theme'); if(st&&THEMES.indexOf(st)>=0) ti=THEMES.indexOf(st)}catch(e){}
+function applyTheme(){
+  const t=THEMES[ti];
+  if(t==='system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',t);
+  const lbl='Theme: '+t;
+  const a=document.getElementById('themeBtn'),b=document.getElementById('themeBtn2');
+  if(a)a.textContent=lbl; if(b)b.textContent=t==='system'?'Theme':t;
+  try{localStorage.setItem('rbm21-theme',t)}catch(e){}
+  flushColours();SCENES.forEach(S=>S.dirty=true);
+}
+['themeBtn','themeBtn2'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{ti=(ti+1)%3;applyTheme()})});
+applyTheme();
+
+/* ============ derivation steppers ============ */
+document.querySelectorAll('.deriv').forEach(d=>{
+  const items=Array.from(d.querySelectorAll('.deriv-steps li'));
+  let n=1;
+  const paint=()=>{items.forEach((li,i)=>li.dataset.off=i<n?'0':'1');
+    const nx=d.querySelector('[data-deriv-next]'),pv=d.querySelector('[data-deriv-prev]');
+    if(nx){nx.textContent=n>=items.length?'All steps shown':'Next step';nx.disabled=n>=items.length;nx.style.opacity=n>=items.length?.5:1}
+    if(pv){pv.disabled=n<=1;pv.style.opacity=n<=1?.5:1}};
+  d.querySelector('[data-deriv-next]')?.addEventListener('click',()=>{n=Math.min(items.length,n+1);paint()});
+  d.querySelector('[data-deriv-prev]')?.addEventListener('click',()=>{n=Math.max(1,n-1);paint()});
+  paint();
+});
+
+function bind(id,fn,fmtFn){
+  const el=document.getElementById(id),out=document.getElementById(id+'-v');
+  if(!el) return ()=>0;
+  const upd=()=>{const v=parseFloat(el.value); if(out&&fmtFn) out.textContent=fmtFn(v); fn&&fn(v); SCENES.forEach(S=>S.dirty=true)};
+  el.addEventListener('input',upd); upd();
+  return ()=>parseFloat(el.value);
+}
+function toggleGroup(attr,cb){
+  const btns=Array.from(document.querySelectorAll('[data-'+attr+']'));
+  btns.forEach(b=>b.addEventListener('click',()=>{
+    btns.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    cb(b.dataset[attr]); SCENES.forEach(S=>S.dirty=true);
+  }));
+  const init=btns.find(b=>b.getAttribute('aria-pressed')==='true')||btns[0];
+  if(init){btns.forEach(x=>x.setAttribute('aria-pressed',String(x===init)));cb(init.dataset[attr])}
+}
+function playBtn(id,getState,setState){
+  const el=document.getElementById(id); if(!el) return;
+  const paint=()=>{el.textContent=getState()?'Pause':'Play'};
+  el.addEventListener('click',()=>{setState(!getState());paint()});paint();
+}
+const txt=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v};
+
+function rodrigues(p,n,a){const c=Math.cos(a),s=Math.sin(a);return add(add(mul(p,c),mul(cross(n,p),s)),mul(n,dot(n,p)*(1-c)))}
+const CUBE_E=[[0,1],[1,3],[3,2],[2,0],[4,5],[5,7],[7,6],[6,4],[0,4],[1,5],[2,6],[3,7]];
+function cubeVerts(o,s){const v=[];for(let i=0;i<8;i++)v.push([o[0]+((i&1)?s:0),o[1]+((i&2)?s:0),o[2]+((i&4)?s:0)]);return v}
+function drawCube(S,verts,B,st){
+  const P=verts.map(v=>S.project(v,B));
+  const faces=[[0,1,3,2],[4,5,7,6],[0,1,5,4],[2,3,7,6],[0,2,6,4],[1,3,7,5]];
+  faces.map(f=>({f,d:f.reduce((a,i)=>a+P[i].d,0)/4})).sort((a,b)=>b.d-a.d).forEach(o=>{
+    S.g.path(o.f.map(i=>P[i]),{close:true,fill:st.fill,color:'none'});
+  });
+  CUBE_E.forEach(e=>S.g.line(P[e[0]],P[e[1]],{color:st.edge,w:1.6,alpha:.9}));
+  return P;
+}
+function angBetween(a,b){return Math.acos(clamp(dot(unit(a),unit(b)),-1,1))/DEG}
+
+/* ===================================================================
+   01 — CUBE ABOUT A CORNER (SLIDES 2–4)
+   =================================================================== */
+(function(){
+  const I=[[2/3,-1/4,-1/4],[-1/4,2/3,-1/4],[-1/4,-1/4,2/3]];
+  let dir=[1,0,0], psi=0, running=!reduceMotion;
+  const SZ=1.5;
+  const S=makeScene('corner','cv-corner',{yaw:30,pitch:20,dist:7.2,f:2.1,ratio:0.56},function(dt){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.6;
+    const n=unit(dir); if(running) psi+=dt*1.1;
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:4});
+    const O=this.project([0,0,0],B);
+    const verts=cubeVerts([0,0,0],SZ).map(v=>rodrigues(v,n,psi));
+    drawCube(this,verts,B,{fill:'color-mix(in srgb, '+col('rvec')+' 14%, transparent)',edge:col('rvec')});
+    g.line(this.project(mul(n,-0.6),B),this.project(mul(n,3.0),B),{color:col('omega'),w:1.2,dash:[5,4],alpha:.7});
+    const L=matVec(I,n), ang=angBetween(L,n);
+    g.arrow(O,this.project(mul(n,2.3),B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(n,2.5),B),'ω',{size:15,color:col('omega'),halo:true});
+    const Lu=mul(unit(L),2.0);
+    g.arrow(O,this.project(Lu,B),{color:col('lvec'),w:3.4});
+    g.text(this.project(mul(Lu,1.13),B),'L = [I]ω',{size:13,color:col('lvec'),halo:true});
+    g.dot(O,{r:4,color:col('fg')});
+    txt('cc-w','('+n.map(v=>fmt(v,2)).join(', ')+')');
+    txt('cc-l','('+L.map(v=>fmt(v,3)).join(', ')+')');
+    txt('cc-ang',fmt(ang,1)+'°');
+    const par=ang<0.5; txt('cc-par',par?'YES — principal axis!':'NO — L tilted');
+    const el=document.getElementById('cc-par'); if(el) el.style.color=par?col('ok'):col('tau');
+  });
+  if(!S) return;
+  toggleGroup('cw',v=>{dir=v==='x'?[1,0,0]:v==='face'?[1,1,0]:[1,1,1]});
+  playBtn('cc-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   02 — ORIGIN AT CENTRE (SLIDES 5–9)
+   =================================================================== */
+(function(){
+  let s=0, th=90, ph=0;
+  const sl=document.getElementById('ct-s'), SZ=1.6;
+  const S=makeScene('center','cv-center',{yaw:30,pitch:20,dist:7.0,f:2.1,ratio:0.56},function(){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.56;
+    const d=0.5-s, Id=1/6+2*d*d, Io=-d*d;
+    const I=[[Id,Io,Io],[Io,Id,Io],[Io,Io,Id]];
+    g.clear();
+    const B=drawAxes(this,{size:1.9,gridN:4});
+    const O=this.project([0,0,0],B);
+    drawCube(this,cubeVerts([-s*SZ,-s*SZ,-s*SZ],SZ),B,{fill:'color-mix(in srgb, '+col('vvec')+' 12%, transparent)',edge:col('vvec')});
+    const cm=[d*SZ,d*SZ,d*SZ];
+    g.dot(this.project(cm,B),{r:4,color:col('fg-3')});
+    g.text(this.project(cm,B),'CM',{size:10.5,color:col('fg-3'),dx:14,halo:true});
+    const w=[Math.sin(th*DEG)*Math.cos(ph*DEG),Math.sin(th*DEG)*Math.sin(ph*DEG),Math.cos(th*DEG)];
+    const L=matVec(I,w), ang=angBetween(L,w);
+    g.arrow(O,this.project(mul(w,2.0),B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(w,2.2),B),'ω',{size:15,color:col('omega'),halo:true});
+    const Lu=mul(unit(L),1.75);
+    g.arrow(O,this.project(Lu,B),{color:col('lvec'),w:3.4});
+    g.text(this.project(mul(Lu,1.16),B),'L',{size:14,color:col('lvec'),halo:true});
+    g.dot(O,{r:4.5,color:col('fg')});
+    txt('ct-d',fmt(Id,3)); txt('ct-o',fmt(Io,3)); txt('ct-ang',fmt(ang,1)+'°');
+    const diag=Math.abs(Io)<1e-4;
+    txt('ct-stat',diag?'Diagonal & isotropic — L ∥ ω always':'Products of inertia ≠ 0');
+    const el=document.getElementById('ct-stat'); if(el) el.style.color=diag?col('ok'):col('tau');
+  });
+  if(!S) return;
+  const setS=v=>{if(sl){sl.value=String(v);sl.dispatchEvent(new Event('input'))}};
+  bind('ct-s',v=>s=v,v=>v.toFixed(2)+(v===0?' (corner)':v>=0.5?' (centre)':''));
+  bind('ct-th',v=>th=v,v=>Math.round(v)+'°');
+  bind('ct-ph',v=>ph=v,v=>Math.round(v)+'°');
+  document.getElementById('ct-corner').addEventListener('click',()=>setS(0));
+  document.getElementById('ct-center').addEventListener('click',()=>setS(0.5));
+})();
+
+/* ===================================================================
+   03 — DUMBBELL EXAMPLES (SLIDES 10–14)
+   =================================================================== */
+(function(){
+  let phi=45, psi=0, running=!reduceMotion;
+  const sl=document.getElementById('db-phi');
+  const S=makeScene('dumbbell','cv-dumbbell',{yaw:28,pitch:24,dist:7.0,f:2.1,ratio:0.54},function(dt){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.56;
+    if(running) psi+=dt*1.0;
+    const t=Math.tan(phi*DEG), sc=0.95;
+    const p1=[1,t*Math.cos(psi),t*Math.sin(psi)], p2=mul(p1,-1);
+    // inertia tensor (m = 1) from current positions
+    const I=[[0,0,0],[0,0,0],[0,0,0]];
+    [p1,p2].forEach(p=>{const r2=dot(p,p);for(let i=0;i<3;i++)for(let j=0;j<3;j++)I[i][j]+=(i===j?r2:0)-p[i]*p[j]});
+    const w=[1,0,0], L=matVec(I,w);
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:4});
+    const O=this.project([0,0,0],B);
+    g.ring([1*sc,0,0],[0,1,0],[0,0,1],t*sc,{color:col('rvec'),w:1.1,dash:[4,4],alpha:.6});
+    g.ring([-1*sc,0,0],[0,1,0],[0,0,1],t*sc,{color:col('rvec'),w:1.1,dash:[4,4],alpha:.6});
+    const P1=this.project(mul(p1,sc),B), P2=this.project(mul(p2,sc),B);
+    g.line(P1,P2,{color:col('fg-2'),w:2.6});
+    g.dot(P1,{r:8,color:col('rvec'),ring:col('surface')}); g.dot(P2,{r:8,color:col('rvec'),ring:col('surface')});
+    g.text(P1,'m',{size:11,color:col('surface'),weight:700});g.text(P2,'m',{size:11,color:col('surface'),weight:700});
+    g.arrow(O,this.project([2.1,0,0],B),{color:col('omega'),w:3.2});
+    g.text(this.project([2.35,0,0],B),'ω',{size:15,color:col('omega'),halo:true});
+    const Lm=len(L);
+    if(Lm>1e-3){const Lu=mul(unit(L),Math.min(2.0,0.6+Lm*0.35));
+      g.arrow(O,this.project(Lu,B),{color:col('lvec'),w:3.4});
+      g.text(this.project(mul(Lu,1.14),B),'L',{size:14,color:col('lvec'),halo:true});}
+    g.dot(O,{r:4,color:col('fg')});
+    txt('db-diag',fmt(I[0][0],2)+', '+fmt(I[1][1],2)+', '+fmt(I[2][2],2));
+    txt('db-ixy',fmt(I[0][1],2)+'  (I_xz '+fmt(I[0][2],2)+')');
+    txt('db-l','('+L.map(v=>fmt(v,2)).join(', ')+')');
+    let msg,ok;
+    if(Lm<1e-3){msg='L = 0 (masses on the axis)';ok=true}
+    else{const a=angBetween(L,w);ok=a<0.5;msg=ok?'YES':'NO — '+fmt(a,1)+'° off'}
+    txt('db-par',msg); const el=document.getElementById('db-par'); if(el) el.style.color=ok?col('ok'):col('tau');
+  });
+  if(!S) return;
+  bind('db-phi',v=>phi=v,v=>Math.round(v)+'°');
+  toggleGroup('db',v=>{psi=0;if(sl){sl.value=v;sl.dispatchEvent(new Event('input'))}});
+  playBtn('db-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   04 — PUSH FORCE (SLIDE 14)
+   =================================================================== */
+(function(){
+  let x=1, F=4;
+  const S=makeScene('dumbbell','cv-push',{flat:true,orbit:false,ratio:0.36,minH:200,maxH:260},function(){
+    const g=this.g,W=this.W,H=this.H,ctx=this.ctx;
+    g.clear();
+    const cx=W*0.42, cy=H*0.55, u=Math.min(W*0.22,H*0.6)/1.5;
+    g.arrow({x:cx-u*1.9,y:cy},{x:cx+u*1.9,y:cy},{color:col('line'),w:1.4});
+    g.text({x:cx+u*1.9+10,y:cy},'x',{italic:true,color:col('fg-3')});
+    g.arrow({x:cx,y:cy+u*0.9},{x:cx,y:cy-u*0.9},{color:col('line'),w:1.4});
+    g.text({x:cx,y:cy-u*0.9-10},'y',{italic:true,color:col('fg-3')});
+    const r2=Math.SQRT2;
+    g.line({x:cx-r2*u,y:cy},{x:cx+r2*u,y:cy},{color:col('fg-2'),w:3});
+    [-r2,r2].forEach(px=>{g.dot({x:cx+px*u,y:cy},{r:9,color:col('rvec'),ring:col('surface')});g.text({x:cx+px*u,y:cy+20},'('+(px<0?'−':'')+'√2, 0)',{size:11,mono:true,color:col('fg-3')})});
+    // force symbol out of / into page
+    const fx=cx+x*u, fy=cy;
+    ctx.save();ctx.strokeStyle=col('tau');ctx.lineWidth=2;ctx.beginPath();ctx.arc(fx,fy-28,9,0,6.2832);ctx.stroke();
+    if(F>=0){ctx.fillStyle=col('tau');ctx.beginPath();ctx.arc(fx,fy-28,3,0,6.2832);ctx.fill()}
+    else{ctx.beginPath();ctx.moveTo(fx-6,fy-34);ctx.lineTo(fx+6,fy-22);ctx.moveTo(fx+6,fy-34);ctx.lineTo(fx-6,fy-22);ctx.stroke()}
+    ctx.restore();
+    g.line({x:fx,y:fy-19},{x:fx,y:fy},{color:col('tau'),w:1,dash:[2,2]});
+    g.text({x:fx,y:fy-46},'F_z '+(F>=0?'(out of page)':'(into page)'),{size:11,color:col('tau'),halo:true});
+    const ty=-F*x, ay=ty/4;
+    // tau and alpha arrows along y at right
+    const bx=W*0.86;
+    g.text({x:bx,y:16},'τ_y   α_y',{size:11.5,color:col('fg-3')});
+    if(Math.abs(ty)>1e-3) g.arrow({x:bx-16,y:cy},{x:bx-16,y:cy-clamp(ty,-8,8)*u*0.09},{color:col('tau'),w:3});
+    if(Math.abs(ay)>1e-3) g.arrow({x:bx+16,y:cy},{x:bx+16,y:cy-clamp(ay,-8,8)*u*0.3},{color:col('omega'),w:3});
+    txt('pu-t','(0, '+fmt(ty,2)+', 0)'); txt('pu-a',fmt(ay,2)+' rad/s²');
+  });
+  if(!S) return;
+  bind('pu-x',v=>x=v,v=>v.toFixed(2));
+  bind('pu-f',v=>F=v,v=>v.toFixed(1)+' N');
+})();
+
+/* ===================================================================
+   05 — EIGENVALUE WORKED EXAMPLE (SLIDES 24–34)
+   =================================================================== */
+(function(){
+  let ang=20, a=2, b=2, c=-1, rot=false;
+  const slA=document.getElementById('ex-ang');
+  function eig(){
+    const tr=a+b, dt=a*b-c*c, disc=Math.sqrt((a-b)*(a-b)+4*c*c);
+    const l1=(tr-disc)/2, l2=(tr+disc)/2;
+    let tMax=0.5*Math.atan2(2*c,a-b)/DEG; // direction of larger eigenvalue
+    let t2=((tMax%180)+180)%180, t1=(t2+90)%180;
+    return {tr,dt,l1,l2,t1,t2};
+  }
+  const S=makeScene('example','cv-example',{flat:true,orbit:false,ratio:0.5,minH:260,maxH:360},function(){
+    const g=this.g,W=this.W,H=this.H,ctx=this.ctx;
+    g.clear();
+    const E=eig();
+    const cx=W*0.33, cy=H*0.52, R=Math.min(W*0.28,H*0.42), sc=R/Math.max(3.2,Math.abs(E.l2),Math.abs(E.l1));
+    // axes
+    const axAng=rot?E.t1*DEG:0;
+    const ax=[Math.cos(axAng),Math.sin(axAng)], ay=[-Math.sin(axAng),Math.cos(axAng)];
+    const sp=(v,k)=>({x:cx+v[0]*k,y:cy-v[1]*k});
+    g.arrow(sp(mul([ax[0],ax[1],0],-1),R),sp(ax,R*1.05),{color:rot?col('omega'):col('line'),w:rot?2.2:1.4});
+    g.text(sp(ax,R*1.13),rot?"x′":'x',{italic:true,color:rot?col('omega'):col('fg-3'),halo:true});
+    g.arrow(sp(mul([ay[0],ay[1],0],-1),R),sp(ay,R*1.05),{color:rot?col('omega'):col('line'),w:rot?2.2:1.4});
+    g.text(sp(ay,R*1.13),rot?"y′":'y',{italic:true,color:rot?col('omega'):col('fg-3'),halo:true});
+    // eigen lines
+    [[E.t1,'e₁ (λ='+fmt(E.l1,2)+')'],[E.t2,'e₂ (λ='+fmt(E.l2,2)+')']].forEach(([t,lab])=>{
+      const v=[Math.cos(t*DEG),Math.sin(t*DEG)];
+      g.line(sp(v,-R),sp(v,R),{color:col('rvec'),w:1.3,dash:[5,4],alpha:.8});
+      g.text(sp(v,R*0.92),lab,{size:11,color:col('rvec'),halo:true,dy:-10});
+    });
+    // locus of L tip as omega sweeps a unit circle (ellipse)
+    const pts=[];for(let k=0;k<=96;k++){const q=k/96*2*Math.PI,w=[Math.cos(q),Math.sin(q)];pts.push(sp([a*w[0]+c*w[1],c*w[0]+b*w[1]],sc))}
+    g.path(pts,{color:col('lvec'),w:1,alpha:.35});
+    const uc=[];for(let k=0;k<=96;k++){const q=k/96*2*Math.PI;uc.push(sp([Math.cos(q),Math.sin(q)],sc))}
+    g.path(uc,{color:col('omega'),w:1,alpha:.3,dash:[2,3]});
+    const w=[Math.cos(ang*DEG),Math.sin(ang*DEG)], L=[a*w[0]+c*w[1],c*w[0]+b*w[1]];
+    const O={x:cx,y:cy};
+    g.arrow(O,sp(w,sc),{color:col('omega'),w:3});
+    g.text(sp(w,sc+16),'ω',{size:15,color:col('omega'),halo:true});
+    g.arrow(O,sp(L,sc),{color:col('lvec'),w:3.4});
+    g.text(sp(L,sc*1.0+18),'L = [I]ω',{size:13,color:col('lvec'),halo:true});
+    g.dot(O,{r:4,color:col('fg')});
+    // matrix panel
+    const mx=W*0.7, my=H*0.3;
+    const cells=rot?[[fmt(E.l1,2),'0.00'],['0.00',fmt(E.l2,2)]]:[[fmt(a,2),fmt(c,2)],[fmt(c,2),fmt(b,2)]];
+    g.text({x:mx+38,y:my-30},rot?'D IN PRINCIPAL AXES (x′, y′)':'[I] IN LAB AXES (x, y)',{size:10.5,color:col('fg-3')});
+    for(let r=0;r<2;r++)for(let k=0;k<2;k++){
+      const xP=mx+k*76,yP=my+r*46,off=r!==k,zero=off&&Math.abs(parseFloat(cells[r][k]))<0.005;
+      ctx.save();ctx.fillStyle=off?(zero?col('surface-2'):'color-mix(in srgb, '+col('tau')+' 14%, transparent)'):'color-mix(in srgb, '+col('rvec')+' 14%, transparent)';
+      ctx.strokeStyle=off?(zero?col('line'):col('tau')):col('rvec');ctx.lineWidth=1.4;ctx.beginPath();ctx.rect(xP-32,yP-17,64,34);ctx.fill();ctx.stroke();ctx.restore();
+      g.text({x:xP,y:yP},cells[r][k],{size:13,mono:true,color:off?(zero?col('fg-3'):col('tau')):col('rvec')});
+    }
+    const aLW=Math.hypot(L[0],L[1])<1e-6?0:Math.abs(Math.atan2(w[0]*L[1]-w[1]*L[0],w[0]*L[0]+w[1]*L[1]))/DEG;
+    const aa=Math.min(aLW,180-aLW), par=aa<0.6;
+    g.text({x:mx+38,y:my+110},par?'✓ L ∥ ω — eigenvector!':'L not parallel to ω',{size:12.5,color:par?col('ok'):col('tau'),weight:600});
+    const sgn=v=>v<0?'− '+fmt(-v,2):'+ '+fmt(v,2);
+    txt('ex-char','λ² '+sgn(-E.tr)+'λ '+sgn(E.dt)+' = 0');
+    txt('ex-eig',fmt(E.l1,2)+', '+fmt(E.l2,2));
+    const v1=[Math.cos(E.t1*DEG),Math.sin(E.t1*DEG)], v2=[Math.cos(E.t2*DEG),Math.sin(E.t2*DEG)];
+    txt('ex-vec','('+fmt(v1[0],2)+', '+fmt(v1[1],2)+'), ('+fmt(v2[0],2)+', '+fmt(v2[1],2)+')');
+    txt('ex-angLW',fmt(aa,1)+'°'+(par?' ✓':''));
+    S._E=E;
+  });
+  if(!S) return;
+  const setAng=v=>{if(slA){slA.value=String(Math.round(v));slA.dispatchEvent(new Event('input'))}};
+  bind('ex-ang',v=>ang=v,v=>Math.round(v)+'°');
+  bind('ex-a',v=>a=v,v=>v.toFixed(1));
+  bind('ex-b',v=>b=v,v=>v.toFixed(1));
+  bind('ex-c',v=>c=v,v=>(v<0?'−':'')+Math.abs(v).toFixed(1));
+  document.getElementById('ex-e1').addEventListener('click',()=>{S.render.call(S,0);setAng(S._E.t1);ang=S._E.t1});
+  document.getElementById('ex-e2').addEventListener('click',()=>{S.render.call(S,0);setAng(S._E.t2);ang=S._E.t2});
+  const rb=document.getElementById('ex-rot');
+  rb.addEventListener('click',()=>{rot=!rot;rb.setAttribute('aria-pressed',String(rot))});
+  document.getElementById('ex-reset').addEventListener('click',()=>{
+    [['ex-a',2],['ex-b',2],['ex-c',-1]].forEach(([id,v])=>{const e=document.getElementById(id);e.value=String(v);e.dispatchEvent(new Event('input'))});
+    setAng(20);rot=false;rb.setAttribute('aria-pressed','false');
+  });
+})();
+
+/* ===================================================================
+   07 — QUIZ
+   =================================================================== */
+(function(){
+  const Q=[
+  {q:'For a uniform cube (side <span class="m"><i>L</i></span>, mass <span class="m"><i>M</i></span>) with the origin at a corner and axes along the edges, what is <span class="m"><i>I<sub>xx</sub></i></span>?',
+   o:['(2/3) ML²','(1/6) ML²','(1/4) ML²','(1/12) ML²'],a:0,
+   e:'<span class="m"><i>ρ</i>∫∫∫(<i>y</i>²+<i>z</i>²)<i>dV</i> = (<i>M</i>/<i>L</i>³)·2·<i>L</i>·<i>L</i>·<i>L</i>³/3 = (2/3)<i>ML</i>²</span>.'},
+  {q:'For the same corner frame, what is the product of inertia <span class="m"><i>I<sub>xy</sub></i></span>?',
+   o:['−(1/4) ML²','0','+(1/4) ML²','−(2/3) ML²'],a:0,
+   e:'<span class="m">−<i>ρ</i>(<i>L</i>²/2)(<i>L</i>²/2)<i>L</i> = −<i>ML</i>²/4</span>. All mass is in the first octant so nothing cancels.'},
+  {q:'With the origin moved to the centre of the cube, the inertia tensor becomes…',
+   o:['(1/6) ML² times the identity matrix','Still has off-diagonal −(1/4) ML² terms','Zero','(2/3) ML² times the identity'],a:0,
+   e:'Symmetric limits <span class="m">−<i>L</i>/2…<i>L</i>/2</span> kill every odd integral, and <span class="m">∫(<i>y</i>²+<i>z</i>²)<i>dm</i> = <i>ML</i>²/6</span>.'},
+  {q:'A cube spins about its corner with <span class="m"><span class="vec om">ω</span></span> along the <span class="m"><i>x</i></span>-edge. Is <span class="m"><span class="vec lv">L</span></span> parallel to <span class="m"><span class="vec om">ω</span></span>?',
+   o:['No — L = MLω²(2/3, −1/4, −1/4)·… has y and z components','Yes, always','Yes, because the cube is symmetric','L is zero'],a:0,
+   e:'<span class="m">[<i>I</i>](1,0,0) = <i>ML</i>²(2/3, −1/4, −1/4)</span> — tilted ≈35° from <span class="m"><span class="vec om">ω</span></span>.'},
+  {q:'Which axis through the <em>corner</em> of the cube IS a principal axis?',
+   o:['The body diagonal (1,1,1)','The x-edge','A face diagonal (1,1,0)','None exist'],a:0,
+   e:'<span class="m">[<i>I</i>](1,1,1) = (2/3 − 1/2)<i>ML</i>²(1,1,1) = (1/6)<i>ML</i>²(1,1,1)</span>, so it is an eigenvector.'},
+  {q:'Two equal masses <span class="m"><i>m</i></span> at (1,1) and (−1,−1). What is <span class="m"><i>I<sub>xy</sub></i></span>?',
+   o:['−2m','0','+2m','−m'],a:0,
+   e:'<span class="m"><i>I<sub>xy</sub></i> = −Σ<i>m x y</i> = −<i>m</i>(1)(1) − <i>m</i>(−1)(−1) = −2<i>m</i></span>.'},
+  {q:'A force <span class="m"><i>F<sub>z</sub></i></span> acts at <span class="m">(<i>x</i>, <i>y</i>, 0)</span>. What is <span class="m"><span class="vec tv">τ</span> = <span class="vec rv">r</span> × <span class="vec">F</span></span>?',
+   o:['F_z y î − F_z x ĵ','F_z x î + F_z y ĵ','F_z (x + y) k̂','0'],a:0,
+   e:'Expanding the determinant on Slide 14: <span class="m"><i>τ<sub>x</sub></i> = <i>yF<sub>z</sub></i>, <i>τ<sub>y</sub></i> = −<i>xF<sub>z</sub></i></span>.'},
+  {q:'What condition defines a principal axis in the eigenvalue method?',
+   o:['[I]ω = λω, i.e. L is parallel to ω','[I]ω = 0','det[I] = 1','ω is perpendicular to L'],a:0,
+   e:'Slide 17: impose <span class="m"><span class="vec lv">L</span> = <i>λ</i><span class="vec om">ω</span></span>; this is the eigenvalue equation.'},
+  {q:'Why must <span class="m">det([<i>I</i>] − <i>λ</i>[<b>1</b>]) = 0</span>?',
+   o:['Because ([I] − λ1)ω = 0 has a non-zero solution ω only if the matrix is non-invertible','Because the trace is zero','Because ω must be zero','Because I is diagonal'],a:0,
+   e:'Slide 19 theorem: if <span class="m">[<i>A</i>][<i>x</i>] = 0</span> with <span class="m"><i>x</i> ≠ 0</span>, <span class="m"><i>A</i><sup>−1</sup></span> does not exist, so <span class="m">|<i>A</i>| = 0</span>.'},
+  {q:'For <span class="m">[<i>I</i>] = [[2, −1], [−1, 2]]</span>, what are the principal moments and axes?',
+   o:['λ = 1 along (1,1)/√2 and λ = 3 along (−1,1)/√2','λ = 2 and 2 along x and y','λ = 1 along x, λ = 3 along y','λ = −1 and 3'],a:0,
+   e:'<span class="m">(2−<i>λ</i>)² − 1 = 0 ⟹ <i>λ</i> = 1, 3</span>; substituting gives <span class="m"><i>ω<sub>x</sub></i> = ±<i>ω<sub>y</sub></i></span>.'}
+  ];
+  const list=document.getElementById('quizlist'); if(!list) return;
+  let answered=0,right=0;
+  const LT='ABCD';
+  Q.forEach((q,i)=>{
+    const el=document.createElement('div');el.className='q';
+    el.innerHTML='<div class="qh"><span class="qn">'+String(i+1).padStart(2,'0')+'</span><span class="qt">'+q.q+'</span></div>'+
+      '<div class="opts"></div><div class="expl" hidden></div>';
+    const opts=el.querySelector('.opts'), expl=el.querySelector('.expl');
+    expl.innerHTML=q.e;
+    const order=q.o.map((text,k)=>({text,k}));
+    for(let j=order.length-1;j>0;j--){const k=(i*7+j*13)%(j+1);const tmp=order[j];order[j]=order[k];order[k]=tmp}
+    order.forEach((o,j)=>{
+      const b=document.createElement('button');b.className='opt';b.type='button';
+      b.innerHTML='<span class="mk">'+LT[j]+'</span><span>'+o.text+'</span>';
+      b.addEventListener('click',()=>{
+        if(el.dataset.done) return; el.dataset.done='1';
+        const correct=o.k===q.a; answered++; if(correct) right++;
+        Array.from(opts.children).forEach((c,ci)=>{
+          c.disabled=true;
+          if(order[ci].k===q.a) c.dataset.state='right';
+          else if(c===b) c.dataset.state='wrong';
+        });
+        expl.hidden=false;
+        const s=document.getElementById('score');
+        if(s) s.textContent=right+' / '+answered+' correct'+(answered===Q.length?'  ·  all done':'');
+      });
+      opts.appendChild(b);
+    });
+    list.appendChild(el);
+  });
+  const s=document.getElementById('score'); if(s) s.textContent='0 of '+Q.length+' answered';
+})();
+
+/* ===================================================================
+   MAIN LOOP
+   =================================================================== */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  for(let i=0;i<SCENES.length;i++){
+    const S=SCENES[i];
+    if(S.section!==current) continue;
+    if(S.cx==null){S.cx=S.W/2;S.cy=S.H/2}
+    try{S.render.call(S,dt)}catch(e){ if(!S._err){console.error('scene',S.cv.id,e);S._err=1} }
+  }
+  requestAnimationFrame(frame);
+}
+show(location.hash.slice(1)||SECTIONS[0].id,false);
+requestAnimationFrame(frame);
+window.addEventListener('load',()=>{SCENES.forEach(S=>S.resize())});
+})();
+</script>
+</body>
+</html>
