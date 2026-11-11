@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  html,body{margin:0}
+  body{font:14px system-ui,-apple-system,sans-serif}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>Rigid Body in Motion · Lecture 24 (Euler's Equations &amp; Rotational Stability)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&family=Spline+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F2F7; --surface:#FFFFFF; --surface-2:#E7E9F0; --surface-3:#DCDFE9;
+  --fg:#14161D; --fg-2:#545A69; --fg-3:#838A9A;
+  --line:#D3D7E2; --line-soft:#E3E6EE;
+  --omega:#A96E05; --rvec:#0C7A68; --vvec:#2A4FC8; --lvec:#96298A; --tau:#BC2033;
+  --ok:#14785C; --warn:#9E6300;
+  --shadow:0 1px 2px rgba(20,22,29,.06), 0 8px 24px -12px rgba(20,22,29,.18);
+  --font-display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --font-body:'Spline Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-math:'Crimson Pro',Georgia,'Times New Roman',serif;
+  --font-data:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --rail:262px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--surface)}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100%}
+.rail{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;height:calc(100vh - env(safe-area-inset-top,0px));overflow-y:auto;background:var(--surface);border-right:1px solid var(--line);
+  padding-block:22px 28px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:14px;display:flex;flex-direction:column;gap:18px}
+.rail-head{display:flex;flex-direction:column;gap:3px}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.rail-title{font-family:var(--font-display);font-weight:800;font-size:20px;line-height:1.15;letter-spacing:-.015em;text-wrap:balance}
+nav ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.nav-link{display:grid;grid-template-columns:22px 1fr;gap:9px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:7px 9px;cursor:pointer;color:var(--fg-2);font-family:inherit;font-size:13.5px;line-height:1.3}
+.nav-link .n{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);font-variant-numeric:tabular-nums}
+.nav-link:hover{background:var(--surface-2);color:var(--fg)}
+.nav-link[aria-current="true"]{background:var(--surface-2);color:var(--fg);font-weight:600}
+.nav-link[aria-current="true"] .n{color:var(--omega)}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:9px;font-size:11.5px;color:var(--fg-3);line-height:1.45}
+.theme-btn{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);color:var(--fg-2);border-radius:999px;padding:4px 11px;font:inherit;font-size:11.5px;cursor:pointer}
+.theme-btn:hover{color:var(--fg);border-color:var(--fg-3)}
+
+.main{min-width:0;padding-block:30px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto}
+
+/* mobile tab bar */
+.tabbar{display:none}
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .tabbar{display:block;position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+  .tabbar-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:9px 4px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .tabbar-top .rail-title{font-size:16px}
+  .tabscroll{display:flex;gap:4px;overflow-x:auto;padding-block:0 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scrollbar-width:none}
+  .tabscroll::-webkit-scrollbar{display:none}
+  .tabscroll .nav-link{display:block;white-space:nowrap;border:1px solid var(--line);padding:5px 11px;font-size:12.5px}
+  .tabscroll .nav-link .n{display:none}
+}
+
+/* ---------- type ---------- */
+h2.sec-title{font-family:var(--font-display);font-weight:800;font-size:clamp(26px,4.2vw,38px);line-height:1.06;letter-spacing:-.025em;margin:0;text-wrap:balance}
+h3{font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h4{font-family:var(--font-body);font-weight:600;font-size:13px;letter-spacing:.02em;margin:0;color:var(--fg-2)}
+p{margin:0}
+.lede{font-size:16.5px;color:var(--fg-2);max-width:62ch;line-height:1.62}
+.sec{display:flex;flex-direction:column;gap:24px}
+.sec-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line-soft);padding-bottom:20px}
+.slide-tag{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);letter-spacing:.04em}
+.prose{display:flex;flex-direction:column;gap:12px;max-width:66ch}
+.prose p{color:var(--fg-2)}
+ul.bul{margin:0;padding-left:18px;color:var(--fg-2);display:flex;flex-direction:column;gap:5px}
+
+/* ---------- math ---------- */
+.m{font-family:var(--font-math);font-size:1.12em;line-height:1.35;font-feature-settings:"lnum"}
+.m i,.var{font-style:italic}
+.eq{font-family:var(--font-math);font-size:clamp(18px,2.6vw,22px);line-height:1.5;display:flex;flex-wrap:wrap;align-items:center;gap:.12em;min-width:0}
+.eq.big{font-size:clamp(21px,3.2vw,27px)}
+.vec,.hatv,.dotv{position:relative;display:inline-block;font-style:italic}
+.vec::after{content:"→";position:absolute;left:-.04em;right:0;top:-.62em;font-size:.56em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.hatv::after{content:"^";position:absolute;left:0;right:0;top:-.44em;font-size:.72em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.dotv::after{content:"˙";position:absolute;left:0;right:0;top:-.48em;font-size:.85em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.frac{display:inline-flex;flex-direction:column;vertical-align:-.46em;text-align:center;margin:0 .14em;font-size:.86em}
+.frac>span{padding:0 .22em;display:block}
+.frac>span:last-child{border-top:1.3px solid currentColor;margin-top:1px}
+sub,sup{font-size:.62em;font-style:normal}
+.om{color:var(--omega)} .rv{color:var(--rvec)} .vv{color:var(--vvec)} .lv{color:var(--lvec)} .tv{color:var(--tau)} .okc{color:var(--ok)}
+.eq-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.eq-card .cap{font-size:12.5px;color:var(--fg-3);line-height:1.5}
+.eq-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+
+/* matrices & determinants */
+.det,.mat3,.vec3{display:inline-grid;align-items:center;justify-items:center;padding:4px 10px;margin:0 .22em;vertical-align:middle;font-family:var(--font-math)}
+.det{grid-template-columns:repeat(3,auto);gap:3px 14px;border-left:1.6px solid currentColor;border-right:1.6px solid currentColor}
+.mat3{grid-template-columns:repeat(3,auto);gap:4px 14px;border-left:1.8px solid currentColor;border-right:1.8px solid currentColor;border-radius:6px}
+.vec3{grid-template-columns:auto;gap:4px 6px;border-left:1.8px solid currentColor;border-right:1.8px solid currentColor;border-radius:6px}
+
+/* ---------- panels / viz ---------- */
+.viz{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.viz-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
+.viz-head h3{font-size:14px}
+.stage{position:relative;background:var(--surface);min-width:0}
+canvas{display:block;width:100%;height:auto;touch-action:pan-y}
+.hint{position:absolute;right:9px;bottom:7px;font-size:10.5px;color:var(--fg-3);background:color-mix(in srgb,var(--surface) 82%,transparent);padding:2px 7px;border-radius:5px;pointer-events:none}
+.controls{display:grid;gap:13px 20px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));padding:14px 15px;border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ctl label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ctl label .val{font-family:var(--font-data);font-size:11.5px;color:var(--fg);text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--omega);height:20px;margin:0}
+.btn{background:var(--surface);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--fg-3)}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px}
+.readout{display:grid;gap:10px 18px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));padding:13px 15px;border-top:1px solid var(--line-soft)}
+.ro{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ro .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.ro .v{font-family:var(--font-data);font-size:14px;font-variant-numeric:tabular-nums}
+
+/* ---------- derivation stepper ---------- */
+.deriv{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.deriv-steps{list-style:none;margin:0;padding:0}
+.deriv-steps li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;padding:15px 17px;border-top:1px solid var(--line-soft);transition:opacity .25s,filter .25s}
+.deriv-steps li:first-child{border-top:0}
+.deriv-steps li[data-off="1"]{opacity:.28;filter:saturate(.25)}
+.deriv-steps .sn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:6px;font-variant-numeric:tabular-nums}
+.deriv-body{display:flex;flex-direction:column;gap:7px;min-width:0}
+.deriv-body .why{font-size:13px;color:var(--fg-2);line-height:1.52}
+.scrollx{overflow-x:auto;max-width:100%}
+
+/* ---------- misc blocks ---------- */
+.note{border-left:3px solid var(--omega);background:var(--surface);padding:13px 16px;border-radius:0 10px 10px 0;font-size:13.5px;color:var(--fg-2);line-height:1.56}
+.note strong{color:var(--fg)}
+.note.warn{border-left-color:var(--tau)}
+.note.ok{border-left-color:var(--ok)}
+
+/* ---------- quiz ---------- */
+.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:11px;box-shadow:var(--shadow)}
+.q .qh{display:flex;gap:10px;align-items:baseline}
+.q .qn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);flex:none}
+.q .qt{font-size:15px;line-height:1.5}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;text-align:left;background:var(--surface-2);border:1px solid transparent;border-radius:9px;padding:9px 12px;font:inherit;font-size:14px;color:var(--fg);cursor:pointer;line-height:1.45}
+.opt:hover:not(:disabled){border-color:var(--fg-3)}
+.opt .mk{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:3px;flex:none}
+.opt[data-state="right"]{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface-2))}
+.opt[data-state="wrong"]{border-color:var(--tau);background:color-mix(in srgb,var(--tau) 12%,var(--surface-2))}
+.opt:disabled{cursor:default}
+.expl{font-size:13px;color:var(--fg-2);line-height:1.56;border-left:2px solid var(--line);padding-left:11px}
+.score{position:sticky;bottom:12px;align-self:center;background:var(--fg);color:var(--bg);border-radius:999px;padding:7px 18px;font-size:13px;font-weight:600;box-shadow:var(--shadow);font-variant-numeric:tabular-nums}
+
+/* ---------- formula sheet ---------- */
+.sheet{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.sheet-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 17px;display:flex;flex-direction:column;gap:9px}
+.sheet-card .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sheet-card h4{font-size:12px}
+.jump{background:none;border:0;color:var(--vvec);font:inherit;font-size:11.5px;cursor:pointer;padding:0;white-space:nowrap}
+.jump:hover{text-decoration:underline}
+
+.sec[hidden]{display:none !important}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+:focus-visible{outline:2px solid var(--vvec);outline-offset:2px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="rail">
+  <div class="rail-head">
+    <div class="eyebrow">Chapter 4 · Lecture 24</div>
+    <div class="rail-title">Euler's Equations &amp; Rotational Stability</div>
+  </div>
+  <nav><ol id="navlist"></ol></nav>
+  <div class="rail-foot">
+    <button class="theme-btn" id="themeBtn" type="button">Theme: system</button>
+    <div>Drag any 3D view to orbit it. Every coloured term in an equation matches the colour of its vector arrow.</div>
+  </div>
+</aside>
+
+<main class="main">
+<div class="tabbar">
+  <div class="tabbar-top">
+    <div class="rail-title">Rigid Body · Lecture 24</div>
+    <button class="theme-btn" id="themeBtn2" type="button">Theme</button>
+  </div>
+  <div class="tabscroll" id="tabscroll"></div>
+</div>
+<div class="wrap">
+
+<!-- ===================== 1. OVERVIEW & ROTATING BASIS (SLIDES 1-8) ===================== -->
+<section class="sec" id="s-intro" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 1–8 · Motivation &amp; Body Axes</div>
+    <h2 class="sec-title">What Euler's equations are about</h2>
+    <p class="lede">In the inertial frame the inertia tensor <span class="m">[<i>I</i>]</span> changes continuously as the rigid body tumbles. By locking our coordinate axes <span class="m">(<span class="hatv">x</span>, <span class="hatv">y</span>, <span class="hatv">z</span>)</span> to the body's principal axes, <span class="m"><i>I<sub>x</sub>, I<sub>y</sub>, I<sub>z</sub></i></span> stay constant — and the rotating unit vectors change according to <span class="m"><i>d</i><span class="hatv">x</span>/<i>dt</i> = <span class="vec om">ω</span> × <span class="hatv">x</span></span>.</p>
+  </div>
+
+  <div class="eq-grid">
+    <div class="eq-card">
+      <h4>Complete stability analysis (Slide 4)</h4>
+      <div class="eq"><span class="m"><span class="okc">Bound</span> = Stable,&nbsp;&nbsp; <span class="tv">Unbound</span> = Unstable</span></div>
+      <div class="cap">The solution of Euler's equations reveals whether a small perturbation around a principal axis stays bounded (oscillatory) or grows exponentially.</div>
+    </div>
+    <div class="eq-card">
+      <h4>Applications (Slide 5)</h4>
+      <div class="cap"><strong>Aerospace Dynamics:</strong> Attitude control of satellites, missiles, and aircraft in 3D space.<br><strong>Gyroscopes &amp; Spinning Tops:</strong> Precession, nutation, and navigation systems.</div>
+    </div>
+    <div class="eq-card">
+      <h4>Principal-axis increments (Slides 6–8)</h4>
+      <div class="eq"><span class="m">Δ<span class="lv"><i>L<sub>x</sub></i></span> = <span class="rv"><i>I<sub>x</sub></i></span>Δ<span class="om"><i>ω<sub>x</sub></i></span>,&nbsp; Δ<span class="lv"><i>L<sub>y</sub></i></span> = <span class="rv"><i>I<sub>y</sub></i></span>Δ<span class="om"><i>ω<sub>y</sub></i></span>,&nbsp; Δ<span class="lv"><i>L<sub>z</sub></i></span> = <span class="rv"><i>I<sub>z</sub></i></span>Δ<span class="om"><i>ω<sub>z</sub></i></span></span></div>
+      <div class="cap">At <span class="m"><i>t</i> = 0</span> the inertial and body frames coincide, while the body-fixed unit vectors rotate with <span class="m"><span class="vec om">ω</span></span>.</div>
+    </div>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Co-rotating body frame (x̂, ŷ, ẑ) vs. fixed inertial frame</h3>
+      <div class="btnrow">
+        <button class="btn" data-ax="x" aria-pressed="true" type="button">1. Rotate along x-axis</button>
+        <button class="btn" data-ax="y" type="button">2. Rotate along y-axis</button>
+        <button class="btn" data-ax="z" type="button">3. Rotate along z-axis</button>
+        <button class="btn" data-ax="gen" type="button">General 3D ω</button>
+        <button class="btn primary" id="in-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-intro"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="readout">
+      <div class="ro"><div class="k">Angular velocity ω</div><div class="v om" id="in-w">(2.0, 0.0, 0.0)</div></div>
+      <div class="ro"><div class="k">dx̂/dt = ω × x̂</div><div class="v rv" id="in-dx">(0.00, 0.00, 0.00)</div></div>
+      <div class="ro"><div class="k">dŷ/dt = ω × ŷ</div><div class="v vv" id="in-dy">(0.00, 0.00, 2.00)</div></div>
+      <div class="ro"><div class="k">dẑ/dt = ω × ẑ</div><div class="v lv" id="in-dz">(0.00, −2.00, 0.00)</div></div>
+    </div>
+  </div>
+</section>
+<!-- ===================== 2. DERIVATION OF EULER'S EQUATIONS (SLIDES 9-13) ===================== -->
+<section class="sec" id="s-deriv" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 9–13 · Derivation</div>
+    <h2 class="sec-title">Deriving Euler's equations of motion</h2>
+    <p class="lede">Differentiating <span class="m"><span class="vec lv">L</span> = <i>L<sub>x</sub></i><span class="hatv">x</span> + <i>L<sub>y</sub></i><span class="hatv">y</span> + <i>L<sub>z</sub></i><span class="hatv">z</span></span> in the inertial frame produces two contributions: the rate of change inside the body frame <span class="m">(<i>d</i><span class="vec lv">L</span>/<i>dt</i>)<sub>body</sub></span> plus the transport term <span class="m"><span class="vec om">ω</span> × <span class="vec lv">L</span></span> from the rotating unit vectors.</p>
+  </div>
+
+  <div class="deriv" id="d-euler">
+    <div class="viz-head"><h3>Step-by-step derivation (Slides 9–12)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-euler" type="button">Back</button><button class="btn primary" data-deriv-next="d-euler" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><span class="frac"><span><i>d</i><span class="vec lv">L</span></span><span><i>dt</i></span></span><sub>inertial</sub> = <i>L<sub>x</sub></i><span class="frac"><span><i>d</i><span class="hatv">x</span></span><span><i>dt</i></span></span> + <i>L<sub>y</sub></i><span class="frac"><span><i>d</i><span class="hatv">y</span></span><span><i>dt</i></span></span> + <i>L<sub>z</sub></i><span class="frac"><span><i>d</i><span class="hatv">z</span></span><span><i>dt</i></span></span> + <span class="hatv">x</span><span class="frac"><span><i>dL<sub>x</sub></i></span><span><i>dt</i></span></span> + <span class="hatv">y</span><span class="frac"><span><i>dL<sub>y</sub></i></span><span><i>dt</i></span></span> + <span class="hatv">z</span><span class="frac"><span><i>dL<sub>z</sub></i></span><span><i>dt</i></span></span></span></div><div class="why">Slide 9: apply the product rule to <span class="m"><span class="vec lv">L</span> = <i>L<sub>x</sub></i><span class="hatv">x</span> + <i>L<sub>y</sub></i><span class="hatv">y</span> + <i>L<sub>z</sub></i><span class="hatv">z</span></span>.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq big"><span class="m"><span class="frac"><span><i>d</i><span class="vec lv">L</span></span><span><i>dt</i></span></span><sub>inertial</sub> = <span class="vec om">ω</span> × <span class="vec lv">L</span> + <span class="frac"><span><i>d</i><span class="vec lv">L</span></span><span><i>dt</i></span></span><sub>body</sub></span></div><div class="why">Slide 9: substitute <span class="m"><i>d</i><span class="hatv">x</span>/<i>dt</i> = <span class="vec om">ω</span> × <span class="hatv">x</span></span> (and similarly for <span class="m"><span class="hatv">y</span>, <span class="hatv">z</span></span>).</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="scrollx"><div class="eq"><span class="m"><span class="frac"><span><i>d</i><span class="vec lv">L</span></span><span><i>dt</i></span></span><sub>inertial</sub> = </span><span class="det m"><span class="hatv">x</span><span class="hatv">y</span><span class="hatv">z</span><span class="om"><i>ω<sub>x</sub></i></span><span class="om"><i>ω<sub>y</sub></i></span><span class="om"><i>ω<sub>z</sub></i></span><span><i>I<sub>x</sub>ω<sub>x</sub></i></span><span><i>I<sub>y</sub>ω<sub>y</sub></i></span><span><i>I<sub>z</sub>ω<sub>z</sub></i></span></span><span class="m">+ <i>I<sub>x</sub></i><span class="dotv om">ω</span><sub><i>x</i></sub><span class="hatv">x</span> + <i>I<sub>y</sub></i><span class="dotv om">ω</span><sub><i>y</i></sub><span class="hatv">y</span> + <i>I<sub>z</sub></i><span class="dotv om">ω</span><sub><i>z</i></sub><span class="hatv">z</span></span></div></div><div class="why">Slide 10: choose principal axes so <span class="m"><i>L<sub>x</sub></i> = <i>I<sub>x</sub>ω<sub>x</sub></i>, <i>L<sub>y</sub></i> = <i>I<sub>y</sub>ω<sub>y</sub></i>, <i>L<sub>z</sub></i> = <i>I<sub>z</sub>ω<sub>z</sub></i></span> with constant principal moments <span class="m"><i>I<sub>x</sub>, I<sub>y</sub>, I<sub>z</sub></i></span>.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq big"><span class="m"><span class="tv"><i>τ<sub>x</sub></i></span> = <i>I<sub>x</sub></i><span class="dotv om">ω</span><sub><i>x</i></sub> + (<span class="rv"><i>I<sub>z</sub></i> − <i>I<sub>y</sub></i></span>)<span class="om"><i>ω<sub>z</sub>ω<sub>y</sub></i></span>,&nbsp;&nbsp; <span class="tv"><i>τ<sub>y</sub></i></span> = <i>I<sub>y</sub></i><span class="dotv om">ω</span><sub><i>y</i></sub> + (<span class="rv"><i>I<sub>x</sub></i> − <i>I<sub>z</sub></i></span>)<span class="om"><i>ω<sub>x</sub>ω<sub>z</sub></i></span>,&nbsp;&nbsp; <span class="tv"><i>τ<sub>z</sub></i></span> = <i>I<sub>z</sub></i><span class="dotv om">ω</span><sub><i>z</i></sub> + (<span class="rv"><i>I<sub>y</sub></i> − <i>I<sub>x</sub></i></span>)<span class="om"><i>ω<sub>y</sub>ω<sub>x</sub></i></span></span></div><div class="why">Slides 11–12: expand the determinant components and equate <span class="m">(<i>d</i><span class="vec lv">L</span>/<i>dt</i>)<sub>inertial</sub> = <span class="vec tv">τ</span></span>. Cyclic permutation <span class="m">(<i>x</i> → <i>y</i> → <i>z</i>)</span> generates all three equations!</div></div></li>
+    </ol>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Interactive vector breakdown: τ = (dL/dt)<sub>body</sub> + ω × L</h3>
+    </div>
+    <div class="stage"><canvas id="cv-deriv"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="dv-ix">I<sub>x</sub> : I<sub>y</sub> : I<sub>z</sub> (fixed 1 : 2 : 3), &nbsp;ω<sub>x</sub> <span class="val" id="dv-wx-v">1.5</span></label><input type="range" id="dv-wx" min="-3" max="3" step="0.25" value="1.5"></div>
+      <div class="ctl"><label for="dv-wy">ω<sub>y</sub> (rad/s) <span class="val" id="dv-wy-v">1.0</span></label><input type="range" id="dv-wy" min="-3" max="3" step="0.25" value="1.0"></div>
+      <div class="ctl"><label for="dv-wz">ω<sub>z</sub> (rad/s) <span class="val" id="dv-wz-v">1.25</span></label><input type="range" id="dv-wz" min="-3" max="3" step="0.25" value="1.25"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">L = (I_x ω_x, I_y ω_y, I_z ω_z)</div><div class="v lv" id="dv-l">(1.50, 2.00, 3.75)</div></div>
+      <div class="ro"><div class="k">Gyroscopic term ω × L</div><div class="v tv" id="dv-wxl">(1.25, −3.75, 1.50)</div></div>
+      <div class="ro"><div class="k">(I_z−I_y)ω_y ω_z  [x-comp]</div><div class="v tv" id="dv-tx">+1.25</div></div>
+      <div class="ro"><div class="k">(I_x−I_z)ω_z ω_x  [y-comp]</div><div class="v tv" id="dv-ty">−3.75</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 3. PERTURBATION & STABILITY MATH (SLIDES 14-17, 23) ===================== -->
+<section class="sec" id="s-stab" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 14–17 &amp; 23 · Torque-Free Stability</div>
+    <h2 class="sec-title">Stability of rotational motion under small perturbations</h2>
+    <p class="lede">Suppose a torque-free rigid body (<span class="m"><span class="vec tv">τ</span> = 0</span>) spins steadily about the <span class="m"><i>x</i></span>-axis (<span class="m"><i>ω<sub>x</sub></i> ≈ const</span>) and receives a tiny perturbation <span class="m"><i>ω<sub>y</sub>, ω<sub>z</sub></i> ≪ <i>ω<sub>x</sub></i></span>. Differentiating the second Euler equation and substituting the third yields a second-order ODE for <span class="m"><i>ω<sub>y</sub></i>(<i>t</i>)</span>.</p>
+  </div>
+
+  <div class="deriv" id="d-stab">
+    <div class="viz-head"><h3>Linearized perturbation equation (Slides 15–16)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-stab" type="button">Back</button><button class="btn primary" data-deriv-next="d-stab" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><i>I<sub>x</sub></i><span class="dotv om">ω</span><sub><i>x</i></sub> + (<i>I<sub>z</sub></i> − <i>I<sub>y</sub></i>)<span class="om"><i>ω<sub>z</sub>ω<sub>y</sub></i></span> = 0 &nbsp;⟹&nbsp; <i>I<sub>x</sub></i><span class="dotv om">ω</span><sub><i>x</i></sub> ≈ 0 &nbsp;⟹&nbsp; <span class="om"><i>ω<sub>x</sub></i> ≈ constant</span></span></div><div class="why">Slide 15: since both <span class="m"><i>ω<sub>y</sub></i></span> and <span class="om"><i>ω<sub>z</sub></i></span> are small perturbations, their product <span class="m"><i>ω<sub>y</sub>ω<sub>z</sub></i></span> is second-order small (<span class="m">≈ 0</span>).</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><i>I<sub>y</sub></i><span class="frac"><span><i>d</i><sup>2</sup><i>ω<sub>y</sub></i></span><span><i>dt</i><sup>2</sup></span></span> + (<i>I<sub>x</sub></i> − <i>I<sub>z</sub></i>)<i>ω<sub>x</sub></i><span class="frac"><span><i>dω<sub>z</sub></i></span><span><i>dt</i></span></span> = 0,&nbsp;&nbsp; where &nbsp;<span class="frac"><span><i>dω<sub>z</sub></i></span><span><i>dt</i></span></span> = −<span class="frac"><span><i>I<sub>y</sub></i> − <i>I<sub>x</sub></i></span><span><i>I<sub>z</sub></i></span></span><i>ω<sub>x</sub>ω<sub>y</sub></i></span></div><div class="why">Slide 15: differentiate the 2nd Euler equation with respect to <span class="m"><i>t</i></span> and substitute <span class="m"><i>dω<sub>z</sub></i>/<i>dt</i></span> from the 3rd Euler equation.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq big"><span class="m"><span class="frac"><span><i>d</i><sup>2</sup><i>ω<sub>y</sub></i></span><span><i>dt</i><sup>2</sup></span></span> + <span class="rv"><span class="frac"><span>(<i>I<sub>x</sub></i> − <i>I<sub>z</sub></i>)(<i>I<sub>x</sub></i> − <i>I<sub>y</sub></i>)</span><span><i>I<sub>y</sub>I<sub>z</sub></i></span></span><i>ω<sub>x</sub></i><sup>2</sup></span> <i>ω<sub>y</sub></i> = 0 &nbsp;&nbsp;⟺&nbsp;&nbsp; <span class="frac"><span><i>d</i><sup>2</sup><i>ω<sub>y</sub></i></span><span><i>dt</i><sup>2</sup></span></span> + <i>A ω<sub>y</sub></i> = 0</span></div><div class="why">Slides 15–16: the sign of <span class="m"><i>A</i> = <span class="frac"><span>(<i>I<sub>x</sub></i> − <i>I<sub>z</sub></i>)(<i>I<sub>x</sub></i> − <i>I<sub>y</sub></i>)</span><span><i>I<sub>y</sub>I<sub>z</sub></i></span></span><i>ω<sub>x</sub></i><sup>2</sup></span> completely determines whether the perturbation oscillates or blows up!</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq"><span class="m">• <i>I<sub>x</sub></i> largest or smallest ⟹ <i>A</i> &gt; 0 ⟹ <span class="okc"><i>ω<sub>y</sub></i>(<i>t</i>) = <i>C</i><sub>1</sub>cos(√<i>A t</i>) + <i>C</i><sub>2</sub>sin(√<i>A t</i>) &nbsp;[Bound / Stable]</span><br>• <i>I<sub>x</sub></i> intermediate ⟹ <i>A</i> &lt; 0 ⟹ <span class="tv"><i>ω<sub>y</sub></i>(<i>t</i>) = <i>C</i><sub>1</sub><i>e</i><sup>√|<i>A</i>|<i>t</i></sup> + <i>C</i><sub>2</sub><i>e</i><sup>−√|<i>A</i>|<i>t</i></sup> &nbsp;[Unbound / Unstable]</span></span></div><div class="why">Slides 16 &amp; 23: valid for small perturbations — spinning about the largest or smallest principal moment is stable; spinning about the intermediate moment is unstable!</div></div></li>
+    </ol>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Perturbation waveform explorer: d²ω<sub>y</sub>/dt² + A ω<sub>y</sub> = 0</h3>
+      <div class="btnrow">
+        <button class="btn" id="st-max" type="button">Largest: I_x = 5 (Stable)</button>
+        <button class="btn" id="st-min" type="button">Smallest: I_x = 1 (Stable)</button>
+        <button class="btn primary" id="st-mid" type="button">Intermediate: I_x = 2.5 (Unstable)</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-stab"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="st-ix">Spin-axis moment I<sub>x</sub> <span class="val" id="st-ix-v">5.0</span></label><input type="range" id="st-ix" min="0.5" max="6.0" step="0.1" value="5.0"></div>
+      <div class="ctl"><label for="st-iy">Other moment I<sub>y</sub> <span class="val" id="st-iy-v">2.0</span></label><input type="range" id="st-iy" min="0.5" max="6.0" step="0.1" value="2.0"></div>
+      <div class="ctl"><label for="st-iz">Other moment I<sub>z</sub> <span class="val" id="st-iz-v">4.0</span></label><input type="range" id="st-iz" min="0.5" max="6.0" step="0.1" value="4.0"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Ordering of I_x</div><div class="v" id="st-ord">Largest moment</div></div>
+      <div class="ro"><div class="k">Coefficient A / ω_x²</div><div class="v rv" id="st-a">+0.375</div></div>
+      <div class="ro"><div class="k">Solution type</div><div class="v" id="st-sol">Cosine / Sine (Oscillatory)</div></div>
+      <div class="ro"><div class="k">Motion state</div><div class="v okc" id="st-stat">BOUND — STABLE</div></div>
+    </div>
+  </div>
+</section>
+<!-- ===================== 4. SPINNING BOOK / INTERMEDIATE AXIS THEOREM (SLIDES 18-22) ===================== -->
+<section class="sec" id="s-book" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 18–22 · Example 1</div>
+    <h2 class="sec-title">Stability of a book tossed about its three axes</h2>
+    <p class="lede">Toss a rectangular book (principal moments <span class="m"><i>I</i><sub>1</sub> &lt; <i>I</i><sub>2</sub> &lt; <i>I</i><sub>3</sub></span>) spinning about each of its three orthogonal axes with a tiny initial wobble. About the longest axis (smallest <span class="m"><i>I</i></span>) and shortest face axis (largest <span class="m"><i>I</i></span>) it spins cleanly — about the intermediate axis it flips wildly (the Tennis Racket / Dzhanibekov effect)!</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Live 3D Euler-equation integrator: toss the book!</h3>
+      <div class="btnrow">
+        <button class="btn" data-bk="min" type="button">Axis 1 (Smallest I — Stable, Slide 20)</button>
+        <button class="btn" data-bk="max" type="button">Axis 3 (Largest I — Stable, Slide 21)</button>
+        <button class="btn" data-bk="mid" aria-pressed="true" type="button">Axis 2 (Intermediate I — Unstable, Slide 22)</button>
+        <button class="btn primary" id="bk-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-book"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="bk-eps">Initial perturbation ε (rad/s) <span class="val" id="bk-eps-v">0.08</span></label><input type="range" id="bk-eps" min="0.01" max="0.35" step="0.01" value="0.08"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Principal moments (I₁, I₂, I₃)</div><div class="v rv">1.0, 2.6, 3.4</div></div>
+      <div class="ro"><div class="k">Body ω = (ω₁, ω₂, ω₃)</div><div class="v om" id="bk-w">(0.08, 3.50, 0.08)</div></div>
+      <div class="ro"><div class="k">Inertial |L| (conserved)</div><div class="v lv" id="bk-l">9.10</div></div>
+      <div class="ro"><div class="k">Stability verdict</div><div class="v tv" id="bk-verd">UNSTABLE — Flips 180°!</div></div>
+    </div>
+  </div>
+  <div class="note warn"><strong>Important limitation (Slide 23).</strong> The linear stability equations <span class="m"><i>d</i><sup>2</sup><i>ω<sub>y</sub></i>/<i>dt</i><sup>2</sup> ± |<i>A</i>|<i>ω<sub>y</sub></i> = 0</span> are derived by dropping the product <span class="m"><i>ω<sub>y</sub>ω<sub>z</sub></i></span>, so the exponential growth formula is valid <strong>for small perturbations only</strong>. Once <span class="m"><i>ω<sub>y</sub>, ω<sub>z</sub></i></span> become comparable to <span class="m"><i>ω<sub>x</sub></i></span>, the full nonlinear Euler equations take over and make the book flip periodically while conserving total <span class="m">|<b>L</b>|</span> and rotational kinetic energy!</div>
+</section>
+
+<!-- ===================== 5. FORMULA SHEET ===================== -->
+<section class="sec" id="s-sheet" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Every equation in Lecture 24</div>
+    <h2 class="sec-title">Formula sheet</h2>
+    <p class="lede">Summary of Euler's equations and the rotational stability analysis from 24.pptx (Slides 1–23).</p>
+  </div>
+  <div class="sheet">
+    <div class="sheet-card"><div class="top"><h4>Rotating Basis Derivative</h4><button class="jump" data-goto="intro" type="button">section 01 →</button></div><div class="eq"><span class="m"><span class="frac"><span><i>d</i><span class="hatv">x</span></span><span><i>dt</i></span></span> = <span class="vec om">ω</span> × <span class="hatv">x</span></span></div><div class="cap">Slide 9: rate of change of a body-fixed unit vector.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Transport Theorem for L</h4><button class="jump" data-goto="deriv" type="button">section 02 →</button></div><div class="eq"><span class="m"><span class="frac"><span><i>d</i><span class="vec lv">L</span></span><span><i>dt</i></span></span><sub>inertial</sub> = <span class="frac"><span><i>d</i><span class="vec lv">L</span></span><span><i>dt</i></span></span><sub>body</sub> + <span class="vec om">ω</span> × <span class="vec lv">L</span></span></div><div class="cap">Slides 9–10: connects inertial torque to body-frame derivatives.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Euler's Equations (Torque)</h4><button class="jump" data-goto="deriv" type="button">section 02 →</button></div><div class="eq"><span class="m"><span class="tv"><i>τ<sub>x</sub></i></span> = <i>I<sub>x</sub></i><span class="dotv om">ω</span><sub><i>x</i></sub> + (<i>I<sub>z</sub></i> − <i>I<sub>y</sub></i>)<span class="om"><i>ω<sub>y</sub>ω<sub>z</sub></i></span></span></div><div class="cap">Slides 11–12: plus cyclic permutations <span class="m"><i>x</i> → <i>y</i> → <i>z</i></span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Torque-Free Euler Equations</h4><button class="jump" data-goto="stab" type="button">section 03 →</button></div><div class="eq"><span class="m"><i>I<sub>x</sub></i><span class="dotv om">ω</span><sub><i>x</i></sub> + (<i>I<sub>z</sub></i> − <i>I<sub>y</sub></i>)<span class="om"><i>ω<sub>y</sub>ω<sub>z</sub></i></span> = 0</span></div><div class="cap">Slide 15: governs free rotation of satellites, books, and tops.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Perturbation ODE</h4><button class="jump" data-goto="stab" type="button">section 03 →</button></div><div class="eq"><span class="m"><span class="frac"><span><i>d</i><sup>2</sup><i>ω<sub>y</sub></i></span><span><i>dt</i><sup>2</sup></span></span> + <span class="frac"><span>(<i>I<sub>x</sub></i>−<i>I<sub>z</sub></i>)(<i>I<sub>x</sub></i>−<i>I<sub>y</sub></i>)</span><span><i>I<sub>y</sub>I<sub>z</sub></i></span></span><i>ω<sub>x</sub></i><sup>2</sup><i>ω<sub>y</sub></i> = 0</span></div><div class="cap">Slides 15–16: valid for small perturbations around steady spin <span class="m"><i>ω<sub>x</sub></i></span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Bound vs. Unbound Solutions</h4><button class="jump" data-goto="book" type="button">section 04 →</button></div><div class="eq"><span class="m"><i>A</i> &gt; 0: cos/sin (Stable), &nbsp;<i>A</i> &lt; 0: <i>e</i><sup>±√|<i>A</i>|<i>t</i></sup> (Unstable)</span></div><div class="cap">Slides 16–23: intermediate principal moment (<span class="m"><i>A</i> &lt; 0</span>) is unstable.</div></div>
+  </div>
+</section>
+
+<!-- ===================== 6. QUIZ ===================== -->
+<section class="sec" id="s-quiz" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Self-check</div>
+    <h2 class="sec-title">Ten questions on Lecture 24</h2>
+    <p class="lede">Test your understanding of Euler's equations, rotating frames, perturbation equations, and the spinning book stability theorem.</p>
+  </div>
+  <div id="quizlist" style="display:flex;flex-direction:column;gap:14px"></div>
+  <div class="score" id="score">0 answered</div>
+</section>
+
+</div>
+</main>
+</div>
+<script>
+(function(){
+"use strict";
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const unit=a=>{const L=len(a)||1;return mul(a,1/L)};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const DEG=Math.PI/180;
+const fmt=(v,n)=>{const s=v.toFixed(n);return (Object.is(parseFloat(s),-0)||s==="-"+(0).toFixed(n))?(0).toFixed(n):s};
+function matVec(A,v){return [A[0][0]*v[0]+A[0][1]*v[1]+A[0][2]*v[2],A[1][0]*v[0]+A[1][1]*v[1]+A[1][2]*v[2],A[2][0]*v[0]+A[2][1]*v[1]+A[2][2]*v[2]]}
+
+/* ============ theme colours ============ */
+let CSS_CACHE={};
+function col(name){
+  if(!(name in CSS_CACHE)) CSS_CACHE[name]=getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim()||'#888';
+  return CSS_CACHE[name];
+}
+function flushColours(){CSS_CACHE={};}
+try{ if(window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',flushColours);}catch(e){}
+new MutationObserver(flushColours).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ============ scene registry + 3D canvas ============ */
+const SCENES=[];
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function makeScene(section, canvasId, opt, renderFn){
+  const cv=document.getElementById(canvasId); if(!cv) return null;
+  const ctx=cv.getContext('2d');
+  const o=Object.assign({ratio:0.56,minH:260,maxH:430,yaw:36,pitch:22,dist:6.5,f:2.1,orbit:true,flat:false},opt);
+  const S={cv,ctx,section,yaw:o.yaw,pitch:o.pitch,dist:o.dist,f:o.f,W:600,H:340,t:0,playing:true,opt:o,data:{}};
+
+  function resize(){
+    const w=Math.max(220,cv.parentElement.clientWidth);
+    const h=clamp(Math.round(w*o.ratio),o.minH,o.maxH);
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+    cv.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    S.W=w;S.H=h;S.dirty=true;
+  }
+  S.resize=resize;
+  try{new ResizeObserver(resize).observe(cv.parentElement)}catch(e){window.addEventListener('resize',resize)}
+  resize();
+
+  if(o.orbit && !o.flat){
+    let dragging=false,lx=0,ly=0;
+    const down=e=>{dragging=true;const p=e.touches?e.touches[0]:e;lx=p.clientX;ly=p.clientY;cv.style.cursor='grabbing'};
+    const move=e=>{if(!dragging)return;const p=e.touches?e.touches[0]:e;
+      S.yaw-=(p.clientX-lx)*0.42;S.pitch=clamp(S.pitch+(p.clientY-ly)*0.35,-86,86);lx=p.clientX;ly=p.clientY;
+      if(e.cancelable&&e.touches)e.preventDefault();S.dirty=true};
+    const up=()=>{dragging=false;cv.style.cursor='grab'};
+    cv.style.cursor='grab';
+    cv.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+    cv.addEventListener('touchstart',down,{passive:true});cv.addEventListener('touchmove',move,{passive:false});
+    window.addEventListener('touchend',up);
+  }
+
+  S.basis=function(){
+    const pr=S.pitch*DEG, yw=S.yaw*DEG;
+    const ez=[Math.cos(pr)*Math.cos(yw),Math.cos(pr)*Math.sin(yw),Math.sin(pr)];
+    let ex=cross([0,0,1],ez); if(len(ex)<1e-6) ex=[1,0,0]; ex=unit(ex);
+    const ey=cross(ez,ex);
+    return {ex,ey,ez};
+  };
+  S.project=function(p,B){
+    B=B||S.basis();
+    const depth=S.dist-dot(p,B.ez);
+    const k=(S.f*Math.min(S.W,S.H*1.5)/2)/Math.max(depth,0.25);
+    return {x:S.cx+dot(p,B.ex)*k, y:S.cy-dot(p,B.ey)*k, d:depth, k:k};
+  };
+
+  const g={};
+  g.clear=()=>{ctx.clearRect(0,0,S.W,S.H)};
+  g.line=(A,B2,st)=>{st=st||{};ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x,B2.y);ctx.stroke();ctx.restore()};
+  g.path=(pts,st)=>{st=st||{};if(pts.length<2)return;ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+    if(st.close)ctx.closePath(); if(st.fill){ctx.fillStyle=st.fill;ctx.fill()} if(st.color!=='none')ctx.stroke();ctx.restore()};
+  g.arrow=(A,B2,st)=>{st=st||{};const c=st.color||col('fg');const w=st.w||2.4;
+    const dx=B2.x-A.x,dy=B2.y-A.y,L=Math.hypot(dx,dy);if(L<0.5)return;
+    const hs=Math.max(7,Math.min(13,L*0.26)),ux=dx/L,uy=dy/L;
+    ctx.save();ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x-ux*hs*0.75,B2.y-uy*hs*0.75);ctx.stroke();
+    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(B2.x,B2.y);
+    ctx.lineTo(B2.x-ux*hs+(-uy)*hs*0.40,B2.y-uy*hs+(ux)*hs*0.40);
+    ctx.lineTo(B2.x-ux*hs-(-uy)*hs*0.40,B2.y-uy*hs-(ux)*hs*0.40);
+    ctx.closePath();ctx.fill();ctx.restore()};
+  g.dot=(P,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg');ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.arc(P.x,P.y,st.r||4,0,6.2832);ctx.fill();
+    if(st.ring){ctx.strokeStyle=st.ring;ctx.lineWidth=1.6;ctx.stroke()}ctx.restore()};
+  g.text=(P,s,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg-2');
+    ctx.font=(st.italic?'italic ':'')+(st.weight||600)+' '+(st.size||12)+'px '+(st.mono?"ui-monospace,Menlo,Consolas,monospace":"'Spline Sans',system-ui,sans-serif");
+    ctx.textAlign=st.align||'center';ctx.textBaseline=st.base||'middle';ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    if(st.halo){ctx.lineWidth=3.4;ctx.strokeStyle=col('surface');ctx.lineJoin='round';ctx.strokeText(s,P.x+(st.dx||0),P.y+(st.dy||0))}
+    ctx.fillText(s,P.x+(st.dx||0),P.y+(st.dy||0));ctx.restore()};
+  g.ring=(center,u,v,R,st,n,a0,a1)=>{
+    n=n||72;a0=a0==null?0:a0;a1=a1==null?Math.PI*2:a1;const B=S.basis();const pts=[];
+    for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;pts.push(S.project(add(center,add(mul(u,R*Math.cos(a)),mul(v,R*Math.sin(a)))),B))}
+    g.path(pts,st)};
+  S.g=g;
+
+  S.render=renderFn;
+  SCENES.push(S);
+  return S;
+}
+
+function drawAxes(S,opt){
+  const g=S.g,B=S.basis(),o=Object.assign({size:2.0,grid:true,labels:['X','Y','Z'],gridN:3,plane:'xy'},opt||{});
+  const O=S.project([0,0,0],B);
+  if(o.grid){
+    const n=o.gridN,st={color:col('line'),w:1,alpha:.85};
+    for(let i=-n;i<=n;i++){
+      const f=i/n*o.size;
+      if(o.plane==='xy'){g.line(S.project([f,-o.size,0],B),S.project([f,o.size,0],B),st);g.line(S.project([-o.size,f,0],B),S.project([o.size,f,0],B),st)}
+      else{g.line(S.project([f,0,-o.size],B),S.project([f,0,o.size],B),st);g.line(S.project([-o.size,0,f],B),S.project([o.size,0,f],B),st)}
+    }
+  }
+  const L=o.size*1.12, ax=[[L,0,0],[0,L,0],[0,0,L]];
+  for(let i=0;i<3;i++){
+    if(o.labels[i]===null) continue;
+    const P=S.project(ax[i],B);
+    g.line(O,P,{color:col('fg-3'),w:1.3,alpha:.95});
+    g.text(P,o.labels[i],{color:col('fg-3'),size:12.5,dx:9,dy:-7,italic:true,halo:true});
+  }
+  return B;
+}
+
+/* ============ navigation ============ */
+const SECTIONS=[
+  {id:'intro', label:'Rotating Frame & Body Axes'},
+  {id:'deriv', label:"Deriving Euler's Equations"},
+  {id:'stab',  label:'Perturbation & Stability Math'},
+  {id:'book',  label:'Spinning Book (3D Theorem)'},
+  {id:'sheet', label:'Formula sheet'},
+  {id:'quiz',  label:'Self-check quiz'}
+];
+let current=SECTIONS[0].id;
+const navlist=document.getElementById('navlist'),tabscroll=document.getElementById('tabscroll');
+SECTIONS.forEach((s,i)=>{
+  const n=String(i+1).padStart(2,'0');
+  const li=document.createElement('li');
+  li.innerHTML='<button class="nav-link" type="button" data-goto="'+s.id+'"><span class="n">'+n+'</span><span>'+s.label+'</span></button>';
+  navlist.appendChild(li);
+  const b=document.createElement('button');
+  b.className='nav-link';b.type='button';b.dataset.goto=s.id;b.innerHTML='<span class="n">'+n+'</span><span>'+s.label+'</span>';
+  tabscroll.appendChild(b);
+});
+function show(id,push){
+  if(!SECTIONS.some(s=>s.id===id)) id=SECTIONS[0].id;
+  current=id;
+  SECTIONS.forEach(s=>{const el=document.getElementById('s-'+s.id); if(el) el.hidden = s.id!==id});
+  document.querySelectorAll('[data-goto]').forEach(b=>{if(b.classList.contains('nav-link'))b.setAttribute('aria-current',String(b.dataset.goto===id))});
+  if(push && location.hash.slice(1)!==id){try{location.hash=id}catch(e){}}
+  SCENES.forEach(S=>{if(S.section===id){S.resize();S.dirty=true}});
+  const act=tabscroll.querySelector('[data-goto="'+id+'"]'); if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'center'});
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-goto]'); if(!b)return;
+  show(b.dataset.goto,true);
+  if(!b.classList.contains('nav-link')) window.scrollTo({top:0,behavior:reduceMotion?'auto':'smooth'});
+});
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)||SECTIONS[0].id,false));
+
+/* ============ theme toggle ============ */
+const THEMES=['system','light','dark'];
+let ti=0;
+try{const st=localStorage.getItem('rbm24-theme'); if(st&&THEMES.indexOf(st)>=0) ti=THEMES.indexOf(st)}catch(e){}
+function applyTheme(){
+  const t=THEMES[ti];
+  if(t==='system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',t);
+  const lbl='Theme: '+t;
+  const a=document.getElementById('themeBtn'),b=document.getElementById('themeBtn2');
+  if(a)a.textContent=lbl; if(b)b.textContent=t==='system'?'Theme':t;
+  try{localStorage.setItem('rbm24-theme',t)}catch(e){}
+  flushColours();SCENES.forEach(S=>S.dirty=true);
+}
+['themeBtn','themeBtn2'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{ti=(ti+1)%3;applyTheme()})});
+applyTheme();
+
+/* ============ derivation steppers ============ */
+document.querySelectorAll('.deriv').forEach(d=>{
+  const items=Array.from(d.querySelectorAll('.deriv-steps li'));
+  let n=1;
+  const paint=()=>{items.forEach((li,i)=>li.dataset.off=i<n?'0':'1');
+    const nx=d.querySelector('[data-deriv-next]'),pv=d.querySelector('[data-deriv-prev]');
+    if(nx){nx.textContent=n>=items.length?'All steps shown':'Next step';nx.disabled=n>=items.length;nx.style.opacity=n>=items.length?.5:1}
+    if(pv){pv.disabled=n<=1;pv.style.opacity=n<=1?.5:1}};
+  d.querySelector('[data-deriv-next]')?.addEventListener('click',()=>{n=Math.min(items.length,n+1);paint()});
+  d.querySelector('[data-deriv-prev]')?.addEventListener('click',()=>{n=Math.max(1,n-1);paint()});
+  paint();
+});
+
+function bind(id,fn,fmtFn){
+  const el=document.getElementById(id),out=document.getElementById(id+'-v');
+  if(!el) return ()=>0;
+  const upd=()=>{const v=parseFloat(el.value); if(out&&fmtFn) out.textContent=fmtFn(v); fn&&fn(v); SCENES.forEach(S=>S.dirty=true)};
+  el.addEventListener('input',upd); upd();
+  return ()=>parseFloat(el.value);
+}
+function toggleGroup(attr,cb){
+  const btns=Array.from(document.querySelectorAll('[data-'+attr+']'));
+  btns.forEach(b=>b.addEventListener('click',()=>{
+    btns.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    cb(b.dataset[attr]); SCENES.forEach(S=>S.dirty=true);
+  }));
+  const init=btns.find(b=>b.getAttribute('aria-pressed')==='true')||btns[0];
+  if(init){btns.forEach(x=>x.setAttribute('aria-pressed',String(x===init)));cb(init.dataset[attr])}
+}
+function playBtn(id,getState,setState){
+  const el=document.getElementById(id); if(!el) return;
+  const paint=()=>{el.textContent=getState()?'Pause':'Play'};
+  el.addEventListener('click',()=>{setState(!getState());paint()});paint();
+}
+const txt=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v};
+function rodrigues(p,n,a){const c=Math.cos(a),s=Math.sin(a);return add(add(mul(p,c),mul(cross(n,p),s)),mul(n,dot(n,p)*(1-c)))}
+const BOX_E=[[0,1],[1,3],[3,2],[2,0],[4,5],[5,7],[7,6],[6,4],[0,4],[1,5],[2,6],[3,7]];
+function boxVerts(hx,hy,hz){const v=[];for(let i=0;i<8;i++)v.push([((i&1)?hx:-hx),((i&2)?hy:-hy),((i&4)?hz:-hz)]);return v}
+function drawBox(S,verts,B,st){
+  const P=verts.map(v=>S.project(v,B));
+  const faces=[[0,1,3,2],[4,5,7,6],[0,1,5,4],[2,3,7,6],[0,2,6,4],[1,3,7,5]];
+  faces.map((f,idx)=>({f,idx,d:f.reduce((a,i)=>a+P[i].d,0)/4})).sort((a,b)=>b.d-a.d).forEach(o=>{
+    S.g.path(o.f.map(i=>P[i]),{close:true,fill:o.idx===1?st.topFill||st.fill:st.fill,color:'none'});
+  });
+  BOX_E.forEach(e=>S.g.line(P[e[0]],P[e[1]],{color:st.edge,w:1.6,alpha:.92}));
+}
+/* ===================================================================
+   01 — ROTATING FRAME & BODY AXES (SLIDES 6–8)
+   =================================================================== */
+(function(){
+  let mode='x', psi=0, running=!reduceMotion;
+  const S=makeScene('intro','cv-intro',{yaw:34,pitch:22,dist:7.2,f:2.1,ratio:0.54},function(dt){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.58;
+    const w = mode==='x'?[2,0,0]:mode==='y'?[0,2,0]:mode==='z'?[0,0,2]:[1.4,1.2,1.6];
+    const n = unit(w);
+    if(running) psi += dt*0.95;
+    g.clear();
+    const B=drawAxes(this,{size:2.1,gridN:4,labels:['X (inertial)','Y (inertial)','Z (inertial)']});
+    const O=this.project([0,0,0],B);
+    const ex=rodrigues([1,0,0],n,psi), ey=rodrigues([0,1,0],n,psi), ez=rodrigues([0,0,1],n,psi);
+    const bV=boxVerts(1.1,0.7,0.35).map(v=>add(add(mul(ex,v[0]),mul(ey,v[1])),mul(ez,v[2])));
+    drawBox(this,bV,B,{fill:'color-mix(in srgb, '+col('rvec')+' 12%, transparent)',edge:col('rvec')});
+    // draw body unit vectors x̂, ŷ, ẑ
+    const cols=[col('rvec'),col('vvec'),col('lvec')], lbs=['x̂','ŷ','ẑ'], vecs=[ex,ey,ez];
+    vecs.forEach((u,i)=>{
+      const tip=mul(u,1.65);
+      g.arrow(O,this.project(tip,B),{color:cols[i],w:2.8});
+      g.text(this.project(mul(tip,1.14),B),lbs[i],{size:13,color:cols[i],halo:true});
+      const du=cross(w,u);
+      if(len(du)>1e-2){
+        g.arrow(this.project(tip,B),this.project(add(tip,mul(du,0.35)),B),{color:col('tau'),w:2.0});
+      }
+    });
+    g.arrow(O,this.project(mul(n,2.1),B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(n,2.3),B),'ω',{size:15,color:col('omega'),halo:true});
+    g.dot(O,{r:4,color:col('fg')});
+    const dx=cross(w,ex), dy=cross(w,ey), dz=cross(w,ez);
+    txt('in-w','('+w.map(v=>fmt(v,1)).join(', ')+')');
+    txt('in-dx','('+dx.map(v=>fmt(v,2)).join(', ')+')');
+    txt('in-dy','('+dy.map(v=>fmt(v,2)).join(', ')+')');
+    txt('in-dz','('+dz.map(v=>fmt(v,2)).join(', ')+')');
+  });
+  if(!S) return;
+  toggleGroup('ax',v=>{mode=v;psi=0});
+  playBtn('in-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   02 — DERIVATION VECTOR BREAKDOWN (SLIDES 9–12)
+   =================================================================== */
+(function(){
+  const Ix=1, Iy=2, Iz=3;
+  let wx=1.5, wy=1.0, wz=1.25;
+  const S=makeScene('deriv','cv-deriv',{yaw:32,pitch:24,dist:7.6,f:2.0,ratio:0.54},function(){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.60;
+    g.clear();
+    const B=drawAxes(this,{size:2.2,gridN:4,labels:['x (principal)','y (principal)','z (principal)']});
+    const O=this.project([0,0,0],B);
+    const w=[wx,wy,wz], L=[Ix*wx,Iy*wy,Iz*wz], wxl=cross(w,L);
+    const sc=0.52;
+    if(len(w)>1e-3){
+      g.arrow(O,this.project(mul(w,sc),B),{color:col('omega'),w:3.0});
+      g.text(this.project(mul(w,sc*1.14),B),'ω',{size:14,color:col('omega'),halo:true});
+    }
+    if(len(L)>1e-3){
+      g.arrow(O,this.project(mul(L,sc),B),{color:col('lvec'),w:3.2});
+      g.text(this.project(mul(L,sc*1.12),B),'L = (I_x ω_x, I_y ω_y, I_z ω_z)',{size:12.5,color:col('lvec'),halo:true});
+    }
+    if(len(wxl)>1e-3){
+      g.arrow(O,this.project(mul(wxl,sc),B),{color:col('tau'),w:3.2});
+      g.text(this.project(mul(wxl,sc*1.14),B),'ω × L (gyroscopic torque)',{size:12.5,color:col('tau'),halo:true});
+    }
+    g.dot(O,{r:4,color:col('fg')});
+    txt('dv-l','('+L.map(v=>fmt(v,2)).join(', ')+')');
+    txt('dv-wxl','('+wxl.map(v=>fmt(v,2)).join(', ')+')');
+    txt('dv-tx',(wxl[0]>=0?'+':'')+fmt(wxl[0],2));
+    txt('dv-ty',(wxl[1]>=0?'+':'')+fmt(wxl[1],2));
+  });
+  if(!S) return;
+  bind('dv-wx',v=>wx=v,v=>fmt(v,2));
+  bind('dv-wy',v=>wy=v,v=>fmt(v,2));
+  bind('dv-wz',v=>wz=v,v=>fmt(v,2));
+})();
+
+/* ===================================================================
+   03 — PERTURBATION WAVEFORM EXPLORER (SLIDES 15–17, 23)
+   =================================================================== */
+(function(){
+  let Ix=5.0, Iy=2.0, Iz=4.0;
+  const S=makeScene('stab','cv-stab',{flat:true,orbit:false,ratio:0.42,minH:220,maxH:300},function(){
+    const g=this.g,W=this.W,H=this.H;
+    g.clear();
+    const A = ((Ix-Iz)*(Ix-Iy))/(Iy*Iz); // for omega_x = 1
+    const ox=48, oy=H*0.52, pw=W-76, ph=H*0.36;
+    g.arrow({x:ox,y:oy},{x:ox+pw,y:oy},{color:col('line'),w:1.3});
+    g.text({x:ox+pw+14,y:oy},'t',{italic:true,color:col('fg-3')});
+    g.arrow({x:ox,y:oy+ph},{x:ox,y:oy-ph},{color:col('line'),w:1.3});
+    g.text({x:ox+28,y:oy-ph+4},'ω_y(t)',{italic:true,color:col('fg-2')});
+    const pts=[];
+    const Tmax=10;
+    for(let i=0;i<=160;i++){
+      const t=i/160*Tmax;
+      let val=0;
+      if(A>1e-5){ val=Math.cos(Math.sqrt(A)*t*1.8); }
+      else if(A<-1e-5){ val=0.12*Math.cosh(Math.sqrt(-A)*t*0.95); }
+      else { val=0.3+0.15*t; }
+      val=clamp(val,-1.15,1.15);
+      pts.push({x:ox+(t/Tmax)*pw, y:oy-val*ph*0.85});
+    }
+    const stable = A>=0;
+    g.path(pts,{color:stable?col('ok'):col('tau'),w:2.8});
+    g.text({x:W*0.52,y:22},stable?'A > 0  ⇒  d²ω_y/dt² + |A|ω_y = 0  ⇒  Oscillatory (BOUND / STABLE)':'A < 0  ⇒  d²ω_y/dt² − |A|ω_y = 0  ⇒  Exponential (UNBOUND / UNSTABLE)',{size:12.5,color:stable?col('ok'):col('tau'),weight:600});
+    let ord='Intermediate moment';
+    if(Ix>=Iy && Ix>=Iz) ord='Largest moment';
+    else if(Ix<=Iy && Ix<=Iz) ord='Smallest moment';
+    txt('st-ord',ord);
+    txt('st-a',(A>=0?'+':'')+fmt(A,3));
+    txt('st-sol',stable?'C₁ cos(√A t) + C₂ sin(√A t)':'C₁ e^(√|A| t) + C₂ e^(−√|A| t)');
+    txt('st-stat',stable?'BOUND — STABLE':'UNBOUND — UNSTABLE');
+    const el=document.getElementById('st-stat'); if(el) el.style.color=stable?col('ok'):col('tau');
+  });
+  if(!S) return;
+  const setVals=(x,y,z)=>{
+    [['st-ix',x],['st-iy',y],['st-iz',z]].forEach(([id,v])=>{const e=document.getElementById(id);e.value=String(v);e.dispatchEvent(new Event('input'))});
+  };
+  bind('st-ix',v=>Ix=v,v=>fmt(v,1));
+  bind('st-iy',v=>Iy=v,v=>fmt(v,1));
+  bind('st-iz',v=>Iz=v,v=>fmt(v,1));
+  document.getElementById('st-max').addEventListener('click',()=>setVals(5.0,2.0,4.0));
+  document.getElementById('st-min').addEventListener('click',()=>setVals(1.0,2.0,4.0));
+  document.getElementById('st-mid').addEventListener('click',()=>setVals(2.8,1.5,4.5));
+})();
+
+/* ===================================================================
+   04 — SPINNING BOOK 3D SIMULATOR (SLIDES 18–22)
+   =================================================================== */
+(function(){
+  const I=[1.0, 2.6, 3.4]; // I1 < I2 < I3
+  let axis='mid', eps=0.08, running=!reduceMotion;
+  // state: body angular velocity w=[w1,w2,w3] and orthonormal body axes R=[e1,e2,e3]
+  let w=[0.08,3.5,0.08], R=[[1,0,0],[0,1,0],[0,0,1]], trail=[];
+  function resetBook(){
+    R=[[1,0,0],[0,1,0],[0,0,1]]; trail=[];
+    if(axis==='min') w=[3.5, eps, eps];
+    else if(axis==='max') w=[eps, eps, 3.5];
+    else w=[eps, 3.5, eps];
+  }
+  resetBook();
+  function stepRK4(dt){
+    const subSteps=6, h=dt/subSteps;
+    for(let s=0;s<subSteps;s++){
+      const dw=w=>[
+        ((I[1]-I[2])/I[0])*w[1]*w[2],
+        ((I[2]-I[0])/I[1])*w[2]*w[0],
+        ((I[0]-I[1])/I[2])*w[0]*w[1]
+      ];
+      const k1=dw(w);
+      const k2=dw(add(w,mul(k1,0.5*h)));
+      const k3=dw(add(w,mul(k2,0.5*h)));
+      const k4=dw(add(w,mul(k3,h)));
+      w=add(w,mul(add(add(k1,mul(k2,2)),add(mul(k3,2),k4)),h/6));
+      // lab angular velocity vector = w1 e1 + w2 e2 + w3 e3
+      const wLab=add(add(mul(R[0],w[0]),mul(R[1],w[1])),mul(R[2],w[2]));
+      const wm=len(wLab);
+      if(wm>1e-6){
+        const n=mul(wLab,1/wm), a=wm*h;
+        R[0]=unit(rodrigues(R[0],n,a));
+        R[1]=unit(rodrigues(R[1],n,a));
+        R[2]=cross(R[0],R[1]);
+      }
+    }
+    const idx = axis==='min'?0:axis==='max'?2:1;
+    trail.push(mul(R[idx],1.55));
+    if(trail.length>140) trail.shift();
+  }
+
+  const S=makeScene('book','cv-book',{yaw:34,pitch:24,dist:7.4,f:2.1,ratio:0.56},function(dt){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.56;
+    if(running) stepRK4(dt);
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:4,labels:['X','Y','Z']});
+    const O=this.project([0,0,0],B);
+    // book dimensions: longest along e1 (smallest I1), medium along e2 (intermediate I2), thinnest along e3 (largest I3)
+    const bV=boxVerts(1.35,0.85,0.24).map(v=>add(add(mul(R[0],v[0]),mul(R[1],v[1])),mul(R[2],v[2])));
+    drawBox(this,bV,B,{
+      fill:'color-mix(in srgb, '+col('vvec')+' 14%, transparent)',
+      topFill:'color-mix(in srgb, '+col('omega')+' 26%, transparent)',
+      edge:col('vvec')
+    });
+    // trace of the spin-axis tip
+    if(trail.length>2){
+      g.path(trail.map(p=>this.project(p,B)),{color:axis==='mid'?col('tau'):col('ok'),w:2.0});
+    }
+    const idx = axis==='min'?0:axis==='max'?2:1;
+    const tip = mul(R[idx],1.75);
+    g.arrow(O,this.project(tip,B),{color:axis==='mid'?col('tau'):col('ok'),w:3.2});
+    g.text(this.project(mul(tip,1.14),B),'Book axis '+(idx+1),{size:12.5,color:axis==='mid'?col('tau'):col('ok'),halo:true});
+    const LLab=add(add(mul(R[0],I[0]*w[0]),mul(R[1],I[1]*w[1])),mul(R[2],I[2]*w[2]));
+    const Lu=mul(unit(LLab),1.95);
+    g.arrow(O,this.project(Lu,B),{color:col('lvec'),w:3.0});
+    g.text(this.project(mul(Lu,1.12),B),'L (fixed)',{size:12.5,color:col('lvec'),halo:true});
+    txt('bk-w','('+w.map(v=>fmt(v,2)).join(', ')+')');
+    txt('bk-l',fmt(len(LLab),2));
+    const st = axis!=='mid';
+    txt('bk-verd',st?'STABLE — Axis stays bound':'UNSTABLE — Flips 180° repeatedly!');
+    const el=document.getElementById('bk-verd'); if(el) el.style.color=st?col('ok'):col('tau');
+  });
+  if(!S) return;
+  bind('bk-eps',v=>{eps=v;resetBook()},v=>fmt(v,2));
+  toggleGroup('bk',v=>{axis=v;resetBook()});
+  playBtn('bk-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   06 — QUIZ (10 QUESTIONS ON LECTURE 24)
+   =================================================================== */
+(function(){
+  const Q=[
+  {q:'What does the solution of Euler’s equations reveal about the rotational motion of a rigid body (Slide 4)?',
+   o:['Whether the motion is bound (stable) or unbound (unstable)','That all axes of rotation are always unstable','That angular momentum is always zero','That inertia tensors cannot be diagonalized'],a:0,
+   e:'Slide 4: complete analysis for stability of a rigid body in motion — bound solutions mean stable rotation, while unbound solutions mean unstable rotation.'},
+  {q:'Why do we formulate Euler’s equations in the body-fixed principal-axis frame rather than a fixed inertial frame (Slides 9–10)?',
+   o:['Because along the body’s principal axes the inertia tensor is diagonal and I_x, I_y, I_z remain constant in time','Because ω × L is zero in all frames','Because the body does not rotate in the inertial frame','Because torque is always zero'],a:0,
+   e:'Slide 10: choosing principal axes fixed in the body makes <span class="m"><i>L</i> = <i>I<sub>x</sub>ω<sub>x</sub></i><span class="hatv">x</span> + <i>I<sub>y</sub>ω<sub>y</sub></i><span class="hatv">y</span> + <i>I<sub>z</sub>ω<sub>z</sub></i><span class="hatv">z</span></span> with constant <span class="m"><i>I<sub>x</sub>, I<sub>y</sub>, I<sub>z</sub></i></span>.'},
+  {q:'How does a body-fixed unit vector <span class="m"><span class="hatv">x</span></span> change with time as seen from the inertial frame (Slide 9)?',
+   o:['dx̂/dt = ω × x̂','dx̂/dt = 0','dx̂/dt = L × x̂','dx̂/dt = −ω · x̂'],a:0,
+   e:'Slide 9: any unit vector locked to a rotating frame rotates with angular velocity <span class="m"><span class="vec om">ω</span></span>, so <span class="m"><i>d</i><span class="hatv">x</span>/<i>dt</i> = <span class="vec om">ω</span> × <span class="hatv">x</span></span>.'},
+  {q:'What is the relation between the time derivative of angular momentum in the inertial frame and in the rotating body frame (Slides 9–10)?',
+   o:['(dL/dt)_inertial = (dL/dt)_body + ω × L','(dL/dt)_inertial = (dL/dt)_body − ω × L','(dL/dt)_inertial = ω × L only','(dL/dt)_inertial = (dL/dt)_body'],a:0,
+   e:'Slide 9: differentiating both the components <span class="m"><i>L<sub>i</sub></i></span> and the unit vectors <span class="m"><span class="hatv">e</span><sub><i>i</i></sub></span> gives <span class="m">(<i>d</i><span class="vec lv">L</span>/<i>dt</i>)<sub>body</sub> + <span class="vec om">ω</span> × <span class="vec lv">L</span></span>.'},
+  {q:'Which of the following is the correct <span class="m"><i>x</i></span>-component of Euler’s equations of motion (Slide 12)?',
+   o:['τ_x = I_x dω_x/dt + (I_z − I_y) ω_y ω_z','τ_x = I_x dω_x/dt + (I_y − I_z) ω_y ω_z','τ_x = I_x dω_x/dt','τ_x = (I_z + I_y) ω_y ω_z'],a:0,
+   e:'Expanding the <span class="m"><span class="hatv">x</span></span>-component of the determinant <span class="m"><span class="vec om">ω</span> × <span class="vec lv">L</span></span> gives <span class="m"><i>ω<sub>y</sub></i>(<i>I<sub>z</sub>ω<sub>z</sub></i>) − <i>ω<sub>z</sub></i>(<i>I<sub>y</sub>ω<sub>y</sub></i>) = (<i>I<sub>z</sub></i> − <i>I<sub>y</sub></i>)<i>ω<sub>y</sub>ω<sub>z</sub></i></span>.'},
+  {q:'When a torque-free rigid body spins primarily about the <span class="m"><i>x</i></span>-axis (<span class="m"><i>ω<sub>x</sub></i> ≈ const</span>) with tiny perturbations <span class="m"><i>ω<sub>y</sub>, ω<sub>z</sub></i></span>, why is <span class="m"><i>I<sub>x</sub></i>(<i>dω<sub>x</sub></i>/<i>dt</i>) ≈ 0</span> (Slide 15)?',
+   o:['Because the product ω_y ω_z of two small perturbations is second-order small and negligible','Because I_y always equals I_z','Because I_x = 0','Because ω_x is zero'],a:0,
+   e:'Slide 15: in <span class="m"><i>I<sub>x</sub></i><span class="dotv">ω</span><sub><i>x</i></sub> + (<i>I<sub>z</sub></i> − <i>I<sub>y</sub></i>)<i>ω<sub>y</sub>ω<sub>z</sub></i> = 0</span>, the product of two small quantities <span class="m"><i>ω<sub>y</sub>ω<sub>z</sub></i> ≈ 0</span>.'},
+  {q:'What second-order differential equation governs the small perturbation <span class="m"><i>ω<sub>y</sub></i>(<i>t</i>)</span> around steady rotation <span class="m"><i>ω<sub>x</sub></i></span> (Slides 15–16)?',
+   o:['d²ω_y/dt² + [ (I_x − I_z)(I_x − I_y) / (I_y I_z) ] ω_x² ω_y = 0','d²ω_y/dt² + (I_y I_z) ω_y = 0','d²ω_y/dt² − I_x² ω_y = 0','dω_y/dt + ω_x ω_y = 0'],a:0,
+   e:'Differentiating <span class="m"><i>I<sub>y</sub></i><span class="dotv">ω</span><sub><i>y</i></sub> + (<i>I<sub>x</sub></i> − <i>I<sub>z</sub></i>)<i>ω<sub>x</sub>ω<sub>z</sub></i> = 0</span> and substituting <span class="m"><span class="dotv">ω</span><sub><i>z</i></sub></span> gives this harmonic/exponential ODE.'},
+  {q:'For which principal axes is torque-free rotation of a rigid body with three distinct moments <span class="m"><i>I</i><sub>1</sub> &lt; <i>I</i><sub>2</sub> &lt; <i>I</i><sub>3</sub></span> STABLE (Slides 16–22)?',
+   o:['The axes of largest and smallest moment of inertia (I₃ and I₁)','Only the intermediate axis (I₂)','All three principal axes','Only the largest moment of inertia (I₃)'],a:0,
+   e:'When <span class="m"><i>I<sub>x</sub></i></span> is either largest or smallest, both factors <span class="m">(<i>I<sub>x</sub></i> − <i>I<sub>z</sub></i>)</span> and <span class="m">(<i>I<sub>x</sub></i> − <i>I<sub>y</sub></i>)</span> have the same sign, so <span class="m"><i>A</i> &gt; 0</span> and <span class="m"><i>ω<sub>y</sub></i>(<i>t</i>)</span> oscillates boundedly.'},
+  {q:'What happens when a book is tossed spinning about its intermediate principal axis (Slide 22)?',
+   o:['(I_x − I_z)(I_x − I_y) < 0, giving exponential growth of perturbations and an unstable tumbling flip','The perturbation decays to zero immediately','The angular momentum vector changes in the inertial frame','The book stops rotating'],a:0,
+   e:'For the intermediate axis, one factor is positive and the other is negative (<span class="m"><i>A</i> &lt; 0</span>), yielding unbound exponential growth <span class="m"><i>e</i><sup>√|<i>A</i>|<i>t</i></sup></span>.'},
+  {q:'According to Slide 23, what is the key condition under which the linearized stability equation <span class="m"><i>d</i><sup>2</sup><i>ω<sub>y</sub></i>/<i>dt</i><sup>2</sup> + <i>Aω<sub>y</sub></i> = 0</span> is valid?',
+   o:['It is valid for small perturbations only','It is valid only when external torque is large','It is valid only for spherical bodies','It is valid even when ω_y is much larger than ω_x'],a:0,
+   e:'Slide 23 explicitly notes: "STABILITY ANALYSIS FROM EULER’S EQUATIONS ARE VALID FOR SMALL PERTURBATIONS ONLY".'}
+  ];
+  const list=document.getElementById('quizlist'); if(!list) return;
+  let answered=0,right=0;
+  const LT='ABCD';
+  Q.forEach((q,i)=>{
+    const el=document.createElement('div');el.className='q';
+    el.innerHTML='<div class="qh"><span class="qn">'+String(i+1).padStart(2,'0')+'</span><span class="qt">'+q.q+'</span></div>'+
+      '<div class="opts"></div><div class="expl" hidden></div>';
+    const opts=el.querySelector('.opts'), expl=el.querySelector('.expl');
+    expl.innerHTML=q.e;
+    const order=q.o.map((text,k)=>({text,k}));
+    for(let j=order.length-1;j>0;j--){const k=(i*7+j*13)%(j+1);const tmp=order[j];order[j]=order[k];order[k]=tmp}
+    order.forEach((o,j)=>{
+      const b=document.createElement('button');b.className='opt';b.type='button';
+      b.innerHTML='<span class="mk">'+LT[j]+'</span><span>'+o.text+'</span>';
+      b.addEventListener('click',()=>{
+        if(el.dataset.done) return; el.dataset.done='1';
+        const correct=o.k===q.a; answered++; if(correct) right++;
+        Array.from(opts.children).forEach((c,ci)=>{
+          c.disabled=true;
+          if(order[ci].k===q.a) c.dataset.state='right';
+          else if(c===b) c.dataset.state='wrong';
+        });
+        expl.hidden=false;
+        const s=document.getElementById('score');
+        if(s) s.textContent=right+' / '+answered+' correct'+(answered===Q.length?'  ·  all done':'');
+      });
+      opts.appendChild(b);
+    });
+    list.appendChild(el);
+  });
+  const s=document.getElementById('score'); if(s) s.textContent='0 of '+Q.length+' answered';
+})();
+
+/* ===================================================================
+   MAIN LOOP
+   =================================================================== */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  for(let i=0;i<SCENES.length;i++){
+    const S=SCENES[i];
+    if(S.section!==current) continue;
+    if(S.cx==null){S.cx=S.W/2;S.cy=S.H/2}
+    try{S.render.call(S,dt)}catch(e){ if(!S._err){console.error('scene',S.cv.id,e);S._err=1} }
+  }
+  requestAnimationFrame(frame);
+}
+show(location.hash.slice(1)||SECTIONS[0].id,false);
+requestAnimationFrame(frame);
+window.addEventListener('load',()=>{SCENES.forEach(S=>S.resize())});
+})();
+</script>
+</body>
+</html>

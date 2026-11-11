@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  :root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  html,body{margin:0}
+  body{font:14px system-ui,-apple-system,sans-serif}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+<title>Rigid Body in Motion · Lecture 22 (Principal Axes, Degenerate Systems &amp; CM Decomposition)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Crimson+Pro:ital,wght@0,400;0,600;1,400;1,600&family=Spline+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F1F2F7; --surface:#FFFFFF; --surface-2:#E7E9F0; --surface-3:#DCDFE9;
+  --fg:#14161D; --fg-2:#545A69; --fg-3:#838A9A;
+  --line:#D3D7E2; --line-soft:#E3E6EE;
+  --omega:#A96E05; --rvec:#0C7A68; --vvec:#2A4FC8; --lvec:#96298A; --tau:#BC2033;
+  --ok:#14785C; --warn:#9E6300;
+  --shadow:0 1px 2px rgba(20,22,29,.06), 0 8px 24px -12px rgba(20,22,29,.18);
+  --font-display:'Bricolage Grotesque','Trebuchet MS',sans-serif;
+  --font-body:'Spline Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-math:'Crimson Pro',Georgia,'Times New Roman',serif;
+  --font-data:ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
+  --rail:262px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1118; --surface:#171A23; --surface-2:#1F2330; --surface-3:#2A2F3E;
+  --fg:#ECEEF4; --fg-2:#A5ACBE; --fg-3:#747C90;
+  --line:#2B3040; --line-soft:#232838;
+  --omega:#F0B134; --rvec:#3FCCB2; --vvec:#8CA7FF; --lvec:#E68AD6; --tau:#FF7F8F;
+  --ok:#4CD2A6; --warn:#EFB548;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -14px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--surface)}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100%}
+.rail{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;height:calc(100vh - env(safe-area-inset-top,0px));overflow-y:auto;background:var(--surface);border-right:1px solid var(--line);
+  padding-block:22px 28px;padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:14px;display:flex;flex-direction:column;gap:18px}
+.rail-head{display:flex;flex-direction:column;gap:3px}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.rail-title{font-family:var(--font-display);font-weight:800;font-size:20px;line-height:1.15;letter-spacing:-.015em;text-wrap:balance}
+nav ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.nav-link{display:grid;grid-template-columns:22px 1fr;gap:9px;align-items:baseline;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:7px 9px;cursor:pointer;color:var(--fg-2);font-family:inherit;font-size:13.5px;line-height:1.3}
+.nav-link .n{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);font-variant-numeric:tabular-nums}
+.nav-link:hover{background:var(--surface-2);color:var(--fg)}
+.nav-link[aria-current="true"]{background:var(--surface-2);color:var(--fg);font-weight:600}
+.nav-link[aria-current="true"] .n{color:var(--omega)}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:9px;font-size:11.5px;color:var(--fg-3);line-height:1.45}
+.theme-btn{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);color:var(--fg-2);border-radius:999px;padding:4px 11px;font:inherit;font-size:11.5px;cursor:pointer}
+.theme-btn:hover{color:var(--fg);border-color:var(--fg-3)}
+
+.main{min-width:0;padding-block:30px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:860px;margin:0 auto}
+
+/* mobile tab bar */
+.tabbar{display:none}
+@media (max-width:860px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .rail{display:none}
+  .tabbar{display:block;position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--line)}
+  .tabbar-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-block:9px 4px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .tabbar-top .rail-title{font-size:16px}
+  .tabscroll{display:flex;gap:4px;overflow-x:auto;padding-block:0 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scrollbar-width:none}
+  .tabscroll::-webkit-scrollbar{display:none}
+  .tabscroll .nav-link{display:block;white-space:nowrap;border:1px solid var(--line);padding:5px 11px;font-size:12.5px}
+  .tabscroll .nav-link .n{display:none}
+}
+
+/* ---------- type ---------- */
+h2.sec-title{font-family:var(--font-display);font-weight:800;font-size:clamp(26px,4.2vw,38px);line-height:1.06;letter-spacing:-.025em;margin:0;text-wrap:balance}
+h3{font-family:var(--font-display);font-weight:600;font-size:17px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h4{font-family:var(--font-body);font-weight:600;font-size:13px;letter-spacing:.02em;margin:0;color:var(--fg-2)}
+p{margin:0}
+.lede{font-size:16.5px;color:var(--fg-2);max-width:62ch;line-height:1.62}
+.sec{display:flex;flex-direction:column;gap:24px}
+.sec-head{display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--line-soft);padding-bottom:20px}
+.slide-tag{font-family:var(--font-data);font-size:10.5px;color:var(--fg-3);letter-spacing:.04em}
+.prose{display:flex;flex-direction:column;gap:12px;max-width:66ch}
+.prose p{color:var(--fg-2)}
+ul.bul{margin:0;padding-left:18px;color:var(--fg-2);display:flex;flex-direction:column;gap:5px}
+
+/* ---------- math ---------- */
+.m{font-family:var(--font-math);font-size:1.12em;line-height:1.35;font-feature-settings:"lnum"}
+.m i,.var{font-style:italic}
+.eq{font-family:var(--font-math);font-size:clamp(18px,2.6vw,22px);line-height:1.5;display:flex;flex-wrap:wrap;align-items:center;gap:.12em;min-width:0}
+.eq.big{font-size:clamp(21px,3.2vw,27px)}
+.vec,.hatv{position:relative;display:inline-block;font-style:italic}
+.vec::after{content:"→";position:absolute;left:-.04em;right:0;top:-.62em;font-size:.56em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.hatv::after{content:"^";position:absolute;left:0;right:0;top:-.44em;font-size:.72em;font-style:normal;text-align:center;line-height:1;pointer-events:none}
+.frac{display:inline-flex;flex-direction:column;vertical-align:-.46em;text-align:center;margin:0 .14em;font-size:.86em}
+.frac>span{padding:0 .22em;display:block}
+.frac>span:last-child{border-top:1.3px solid currentColor;margin-top:1px}
+sub,sup{font-size:.62em;font-style:normal}
+.om{color:var(--omega)} .rv{color:var(--rvec)} .vv{color:var(--vvec)} .lv{color:var(--lvec)} .tv{color:var(--tau)}
+.eq-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow)}
+.eq-card .cap{font-size:12.5px;color:var(--fg-3);line-height:1.5}
+.eq-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+
+/* matrices & determinants */
+.det,.mat3,.vec3{display:inline-grid;align-items:center;justify-items:center;padding:4px 10px;margin:0 .22em;vertical-align:middle;font-family:var(--font-math)}
+.det{grid-template-columns:repeat(3,auto);gap:3px 14px;border-left:1.6px solid currentColor;border-right:1.6px solid currentColor}
+.mat3{grid-template-columns:repeat(3,auto);gap:4px 14px;border-left:1.8px solid currentColor;border-right:1.8px solid currentColor;border-radius:6px}
+.vec3{grid-template-columns:auto;gap:4px 6px;border-left:1.8px solid currentColor;border-right:1.8px solid currentColor;border-radius:6px}
+
+/* ---------- panels / viz ---------- */
+.viz{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.viz-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;padding:11px 15px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
+.viz-head h3{font-size:14px}
+.stage{position:relative;background:var(--surface);min-width:0}
+canvas{display:block;width:100%;height:auto;touch-action:pan-y}
+.hint{position:absolute;right:9px;bottom:7px;font-size:10.5px;color:var(--fg-3);background:color-mix(in srgb,var(--surface) 82%,transparent);padding:2px 7px;border-radius:5px;pointer-events:none}
+.controls{display:grid;gap:13px 20px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));padding:14px 15px;border-top:1px solid var(--line-soft);background:var(--surface-2)}
+.ctl{display:flex;flex-direction:column;gap:4px;min-width:0}
+.ctl label{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ctl label .val{font-family:var(--font-data);font-size:11.5px;color:var(--fg);text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--omega);height:20px;margin:0}
+.btn{background:var(--surface);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:6px 13px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--fg-3)}
+.btn[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btn.primary{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px}
+.readout{display:grid;gap:10px 18px;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));padding:13px 15px;border-top:1px solid var(--line-soft)}
+.ro{display:flex;flex-direction:column;gap:1px;min-width:0}
+.ro .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+.ro .v{font-family:var(--font-data);font-size:14px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--fg-2)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:16px;height:3px;border-radius:2px;display:inline-block;flex:none}
+
+/* ---------- derivation stepper ---------- */
+.deriv{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.deriv-steps{list-style:none;margin:0;padding:0}
+.deriv-steps li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;padding:15px 17px;border-top:1px solid var(--line-soft);transition:opacity .25s,filter .25s}
+.deriv-steps li:first-child{border-top:0}
+.deriv-steps li[data-off="1"]{opacity:.28;filter:saturate(.25)}
+.deriv-steps .sn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:6px;font-variant-numeric:tabular-nums}
+.deriv-body{display:flex;flex-direction:column;gap:7px;min-width:0}
+.deriv-body .why{font-size:13px;color:var(--fg-2);line-height:1.52}
+.scrollx{overflow-x:auto;max-width:100%}
+
+/* ---------- misc blocks ---------- */
+.note{border-left:3px solid var(--omega);background:var(--surface);padding:13px 16px;border-radius:0 10px 10px 0;font-size:13.5px;color:var(--fg-2);line-height:1.56}
+.note strong{color:var(--fg)}
+.note.warn{border-left-color:var(--tau)}
+.note.ok{border-left-color:var(--ok)}
+table.cmp{width:100%;border-collapse:collapse;font-size:14px}
+table.cmp th,table.cmp td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+table.cmp thead th{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-3);font-weight:600}
+table.cmp tbody th{font-weight:500;color:var(--fg-2);font-size:13px}
+
+/* ---------- quiz ---------- */
+.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:11px;box-shadow:var(--shadow)}
+.q .qh{display:flex;gap:10px;align-items:baseline}
+.q .qn{font-family:var(--font-data);font-size:11px;color:var(--fg-3);flex:none}
+.q .qt{font-size:15px;line-height:1.5}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:9px;align-items:flex-start;text-align:left;background:var(--surface-2);border:1px solid transparent;border-radius:9px;padding:9px 12px;font:inherit;font-size:14px;color:var(--fg);cursor:pointer;line-height:1.45}
+.opt:hover:not(:disabled){border-color:var(--fg-3)}
+.opt .mk{font-family:var(--font-data);font-size:11px;color:var(--fg-3);padding-top:3px;flex:none}
+.opt[data-state="right"]{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,var(--surface-2))}
+.opt[data-state="wrong"]{border-color:var(--tau);background:color-mix(in srgb,var(--tau) 12%,var(--surface-2))}
+.opt:disabled{cursor:default}
+.expl{font-size:13px;color:var(--fg-2);line-height:1.56;border-left:2px solid var(--line);padding-left:11px}
+.score{position:sticky;bottom:12px;align-self:center;background:var(--fg);color:var(--bg);border-radius:999px;padding:7px 18px;font-size:13px;font-weight:600;box-shadow:var(--shadow);font-variant-numeric:tabular-nums}
+
+/* ---------- formula sheet ---------- */
+.sheet{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.sheet-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 17px;display:flex;flex-direction:column;gap:9px}
+.sheet-card .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.sheet-card h4{font-size:12px}
+.jump{background:none;border:0;color:var(--vvec);font:inherit;font-size:11.5px;cursor:pointer;padding:0;white-space:nowrap}
+.jump:hover{text-decoration:underline}
+
+.sec[hidden]{display:none !important}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+:focus-visible{outline:2px solid var(--vvec);outline-offset:2px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="rail">
+  <div class="rail-head">
+    <div class="eyebrow">Chapter 4 · Lecture 22</div>
+    <div class="rail-title">Principal Axes, Degenerate Systems &amp; CM Theorem</div>
+  </div>
+  <nav><ol id="navlist"></ol></nav>
+  <div class="rail-foot">
+    <button class="theme-btn" id="themeBtn" type="button">Theme: system</button>
+    <div>Drag any 3D view to orbit it. Every coloured term in an equation matches the colour of its vector arrow.</div>
+  </div>
+</aside>
+
+<main class="main">
+<div class="tabbar">
+  <div class="tabbar-top">
+    <div class="rail-title">Rigid Body · Lecture 22</div>
+    <button class="theme-btn" id="themeBtn2" type="button">Theme</button>
+  </div>
+  <div class="tabscroll" id="tabscroll"></div>
+</div>
+<div class="wrap">
+
+<!-- ===================== 1. 3-MASS SYSTEM Q1 (SLIDES 2-3) ===================== -->
+<section class="sec" id="s-q1" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 2–3 · Problem Q1</div>
+    <h2 class="sec-title">Inertia tensor &amp; angular momentum of 3 point masses</h2>
+    <p class="lede">Three point masses <span class="m"><i>m</i><sub>1</sub> = 2 kg</span> at <span class="m">(1, −1, 1)</span>, <span class="m"><i>m</i><sub>2</sub> = 1 kg</span> at <span class="m">(2, 0, 2)</span>, and <span class="m"><i>m</i><sub>3</sub> = 4 kg</span> at <span class="m">(−1, 1, 0)</span> are joined by massless rods and rotate with <span class="m"><span class="vec om">ω</span> = 3<span class="hatv">i</span> − 2<span class="hatv">j</span> + 4<span class="hatv">k</span></span> rad/s.</p>
+  </div>
+
+  <div class="deriv" id="d-q1">
+    <div class="viz-head"><h3>Step-by-step calculation (Slides 2–3)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-q1" type="button">Back</button><button class="btn primary" data-deriv-next="d-q1" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><i>I<sub>xx</sub></i> = ∑ <i>m<sub>i</sub></i>(<i>y<sub>i</sub></i><sup>2</sup> + <i>z<sub>i</sub></i><sup>2</sup>) = 2(1 + 1) + 1(0 + 4) + 4(1 + 0) = <span class="rv">12</span>,&nbsp;&nbsp; <i>I<sub>yy</sub></i> = <span class="rv">16</span>,&nbsp;&nbsp; <i>I<sub>zz</sub></i> = <span class="rv">16</span></span></div><div class="why">Diagonal moments of inertia sum squared perpendicular distances (in <span class="m">kg·m<sup>2</sup></span>).</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><i>I<sub>xy</sub></i> = −∑ <i>m<sub>i</sub>x<sub>i</sub>y<sub>i</sub></i> = −[2(−1) + 1(0) + 4(−1)] = <span class="tv">6</span>,&nbsp;&nbsp; <i>I<sub>xz</sub></i> = <span class="tv">−6</span>,&nbsp;&nbsp; <i>I<sub>yz</sub></i> = <span class="tv">2</span></span></div><div class="why">Off-diagonal products of inertia are symmetric (<span class="m"><i>I<sub>ij</sub></i> = <i>I<sub>ji</sub></i></span>).</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="scrollx"><div class="eq big"><span class="m"><span class="vec lv">L</span> = [<i>I</i>]<span class="vec om">ω</span> = </span><span class="mat3 m"><span class="rv">12</span><span class="tv">6</span><span class="tv">−6</span><span class="tv">6</span><span class="rv">16</span><span class="tv">2</span><span class="tv">−6</span><span class="tv">2</span><span class="rv">16</span></span><span class="vec3 om"><span>3</span><span>−2</span><span>4</span></span><span class="m">= </span><span class="vec3 lv"><span>0</span><span>−6</span><span>42</span></span><span class="m"> kg·m<sup>2</sup>/s</span></div></div><div class="why"><span class="m"><i>L<sub>x</sub></i> = 36 − 12 − 24 = 0</span>; <span class="m"><i>L<sub>y</sub></i> = 18 − 32 + 8 = −6</span>; <span class="m"><i>L<sub>z</sub></i> = −18 − 4 + 64 = 42</span>. Notice <span class="m"><span class="vec lv">L</span></span> is not parallel to <span class="m"><span class="vec om">ω</span></span>!</div></div></li>
+    </ol>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>3D rigid-body assembly &amp; angular momentum</h3>
+      <div class="btnrow">
+        <button class="btn" id="q1-preset" type="button">Reset ω = (3, −2, 4)</button>
+        <button class="btn primary" id="q1-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-q1"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="q1-wx">ω<sub>x</sub> (rad/s) <span class="val" id="q1-wx-v">3.0</span></label><input type="range" id="q1-wx" min="-5" max="5" step="0.5" value="3"></div>
+      <div class="ctl"><label for="q1-wy">ω<sub>y</sub> (rad/s) <span class="val" id="q1-wy-v">−2.0</span></label><input type="range" id="q1-wy" min="-5" max="5" step="0.5" value="-2"></div>
+      <div class="ctl"><label for="q1-wz">ω<sub>z</sub> (rad/s) <span class="val" id="q1-wz-v">4.0</span></label><input type="range" id="q1-wz" min="-5" max="5" step="0.5" value="4"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">ω vector (rad/s)</div><div class="v om" id="q1-w">(3.0, −2.0, 4.0)</div></div>
+      <div class="ro"><div class="k">L = [I]ω (kg·m²/s)</div><div class="v lv" id="q1-l">(0.0, −6.0, 42.0)</div></div>
+      <div class="ro"><div class="k">|L| magnitude</div><div class="v lv" id="q1-lm">42.43</div></div>
+      <div class="ro"><div class="k">Angle L ↔ ω</div><div class="v tv" id="q1-ang">36.7°</div></div>
+    </div>
+  </div>
+</section>
+<!-- ===================== 2. DIAGONALIZATION (SLIDES 4-13) ===================== -->
+<section class="sec" id="s-diag" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 4–13 · Two-Step Method</div>
+    <h2 class="sec-title">Physical meaning of eigenvectors &amp; diagonalization</h2>
+    <p class="lede">Step 1 finds the directions where <span class="m"><span class="vec lv">L</span> = <i>λ</i><span class="vec om">ω</span></span> by solving <span class="m">det([<i>I</i>] − <i>λ</i>[<b>1</b>]) = 0</span>. Step 2 rotates the coordinate axes onto those eigenvectors so the inertia tensor becomes purely diagonal: <span class="m"><i>D</i> = diag(<i>λ</i><sub>1</sub>, <i>λ</i><sub>2</sub>)</span>.</p>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Step 1 &amp; Step 2: Hunt for principal axes &amp; rotate frame</h3>
+      <div class="btnrow">
+        <button class="btn" id="dg-e1" type="button">ω along Eigenvector 1 (λ₁ = 1)</button>
+        <button class="btn" id="dg-e2" type="button">ω along Eigenvector 2 (λ₂ = 3)</button>
+        <button class="btn primary" id="dg-rot" aria-pressed="false" type="button">Step 2: Rotate axes (x,y) → (x′,y′)</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-diag"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="dg-ang">Direction of <span class="m"><span class="vec om">ω</span></span> in lab plane <span class="val" id="dg-ang-v">20°</span></label><input type="range" id="dg-ang" min="0" max="180" step="1" value="20"></div>
+      <div class="ctl"><label for="dg-frame">Coordinate frame rotation angle <span class="val" id="dg-frame-v">0°</span></label><input type="range" id="dg-frame" min="0" max="45" step="1" value="0"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Matrix in current frame</div><div class="v rv" id="dg-mat">[[2.00, −1.00], [−1.00, 2.00]]</div></div>
+      <div class="ro"><div class="k">Eigenvalues λ₁, λ₂</div><div class="v rv">1, 3</div></div>
+      <div class="ro"><div class="k">Angle L ↔ ω</div><div class="v tv" id="dg-angLW">25.2°</div></div>
+      <div class="ro"><div class="k">L equations in principal frame</div><div class="v lv">L₁ = 1·ω₁,  L₂ = 3·ω₂</div></div>
+    </div>
+  </div>
+
+  <div class="deriv" id="d-diag">
+    <div class="viz-head"><h3>Slides 4–13 derivation</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-diag" type="button">Back</button><button class="btn primary" data-deriv-next="d-diag" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="mat3 m" style="grid-template-columns:repeat(2,auto)"><span>2 − <i>λ</i></span><span>−1</span><span>−1</span><span>2 − <i>λ</i></span></span><span class="vec3 om"><span><i>ω<sub>x</sub></i></span><span><i>ω<sub>y</sub></i></span></span><span class="m">= 0 &nbsp;⟹&nbsp; (2 − <i>λ</i>)<sup>2</sup> − 1 = 0 &nbsp;⟹&nbsp; <i>λ</i><sub>1</sub> = 1, <i>λ</i><sub>2</sub> = 3</span></div><div class="why">Slides 6–7: non-trivial <span class="m"><span class="vec om">ω</span></span> requires the determinant to vanish.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><i>λ</i><sub>1</sub> = 1 ⟹ <i>ω<sub>x</sub></i> = <i>ω<sub>y</sub></i> &nbsp;(<span class="om">45°</span>),&nbsp;&nbsp; <i>λ</i><sub>2</sub> = 3 ⟹ <i>ω<sub>x</sub></i> = −<i>ω<sub>y</sub></i> &nbsp;(<span class="om">135°</span>)</span></div><div class="why">Slides 8–10: the two eigenvectors are mutually perpendicular.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq big"><span class="m">[<i>I</i>]<sub>principal</sub> = <i>D</i> = </span><span class="mat3 m" style="grid-template-columns:repeat(2,auto)"><span class="rv">1</span><span>0</span><span>0</span><span class="rv">3</span></span><span class="m">,&nbsp;&nbsp; <span class="lv"><i>L</i><sub>1</sub></span> = <i>λ</i><sub>1</sub><span class="om"><i>ω</i><sub>1</sub></span>,&nbsp; <span class="lv"><i>L</i><sub>2</sub></span> = <i>λ</i><sub>2</sub><span class="om"><i>ω</i><sub>2</sub></span></span></div><div class="why">Slides 11–13: rotating the coordinate axes to coincide with the eigenvectors diagonalizes <span class="m">[<i>I</i>]</span> and uncouples the angular momentum equations.</div></div></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ===================== 3. ROTATING DUMBBELL AT 45° (SLIDES 14-22) ===================== -->
+<section class="sec" id="s-dumbbell" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 14–22 · Rotating Dumbbell</div>
+    <h2 class="sec-title">Principal axes of a 45° rotating dumbbell</h2>
+    <p class="lede">Two point masses <span class="m"><i>m</i></span> at distance <span class="m">2<i>b</i></span> from the origin lie in the <span class="m"><i>xy</i></span>-plane along the <span class="m">135° / −45°</span> line (<span class="m"><i>y</i> = −<i>x</i></span>), at <span class="m">(−√2<i>b</i>, √2<i>b</i>, 0)</span> and <span class="m">(√2<i>b</i>, −√2<i>b</i>, 0)</span>.</p>
+  </div>
+
+  <div class="deriv" id="d-db">
+    <div class="viz-head"><h3>Eigenvalues &amp; eigenvectors of the dumbbell (Slides 16–22)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-db" type="button">Back</button><button class="btn primary" data-deriv-next="d-db" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="scrollx"><div class="eq big"><span class="m">[<i>I</i>] = <i>m</i></span><span class="mat3 m"><span class="rv">2<i>b</i><sup>2</sup></span><span class="tv">2<i>b</i><sup>2</sup></span><span>0</span><span class="tv">2<i>b</i><sup>2</sup></span><span class="rv">2<i>b</i><sup>2</sup></span><span>0</span><span>0</span><span>0</span><span class="rv">4<i>b</i><sup>2</sup></span></span><span class="m">= 2<i>mb</i><sup>2</sup></span><span class="mat3 m"><span class="rv">1</span><span class="tv">1</span><span>0</span><span class="tv">1</span><span class="rv">1</span><span>0</span><span>0</span><span>0</span><span class="rv">2</span></span></div></div><div class="why">Slide 16: since <span class="m"><i>x<sub>i</sub>y<sub>i</sub></i> = −2<i>b</i><sup>2</sup></span> for each mass, <span class="m"><i>I<sub>xy</sub></i> = −∑ <i>m<sub>i</sub>x<sub>i</sub>y<sub>i</sub></i> = +4<i>mb</i><sup>2</sup></span> (or <span class="m">2<i>mb</i><sup>2</sup></span> for each mass at <span class="m"><i>r</i> = √2<i>b</i></span>).</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m">det([<i>I</i>] − <i>λ</i>[<b>1</b>]) = 0 &nbsp;⟹&nbsp; (4<i>mb</i><sup>2</sup> − <i>λ</i>) · <i>λ</i> · (<i>λ</i> − 4<i>mb</i><sup>2</sup>) = 0 &nbsp;⟹&nbsp; <span class="rv"><i>λ</i> = 4<i>mb</i><sup>2</sup>, 4<i>mb</i><sup>2</sup>, 0</span></span></div><div class="why">Slides 17–19: two equal non-zero principal moments (<span class="m">4<i>mb</i><sup>2</sup></span>) and one zero principal moment (<span class="m">0</span>).</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m"><i>λ</i><sub>1</sub> = 4<i>mb</i><sup>2</sup>: <span class="om">(1, 1, 0)</span>;&nbsp;&nbsp; <i>λ</i><sub>2</sub> = 4<i>mb</i><sup>2</sup>: <span class="om">(0, 0, 1)</span>;&nbsp;&nbsp; <i>λ</i><sub>3</sub> = 0: <span class="om">(1, −1, 0)</span></span></div><div class="why">Slides 20–22: <span class="m"><i>λ</i><sub>3</sub> = 0</span> is along the rod connecting the point masses (no moment of inertia about a line of point masses); <span class="m"><i>λ</i><sub>1</sub>, <i>λ</i><sub>2</sub></span> are perpendicular to the rod.</div></div></li>
+    </ol>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Spin the 45° dumbbell along its principal &amp; lab axes</h3>
+      <div class="btnrow">
+        <button class="btn" data-dbw="e1" aria-pressed="true" type="button">Principal 1: (1, 1, 0) [λ=4mb²]</button>
+        <button class="btn" data-dbw="e2" type="button">Principal 2: (0, 0, 1) [λ=4mb²]</button>
+        <button class="btn" data-dbw="e3" type="button">Principal 3 (rod): (1, −1, 0) [λ=0]</button>
+        <button class="btn" data-dbw="x" type="button">Lab x-axis: (1, 0, 0)</button>
+        <button class="btn primary" id="db-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-dumbbell"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="readout">
+      <div class="ro"><div class="k">ω̂ direction</div><div class="v om" id="db-w">(0.71, 0.71, 0.00)</div></div>
+      <div class="ro"><div class="k">L / (mb²ω)</div><div class="v lv" id="db-l">(2.83, 2.83, 0.00)</div></div>
+      <div class="ro"><div class="k">Eigenvalue λ</div><div class="v rv" id="db-eig">4 mb²</div></div>
+      <div class="ro"><div class="k">L ∥ ω ?</div><div class="v" id="db-par">YES — Principal axis</div></div>
+    </div>
+  </div>
+</section>
+<!-- ===================== 4. DEGENERATE 3-MASS PROBLEM (SLIDES 23-27) ===================== -->
+<section class="sec" id="s-degen" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 23–27 · Degenerate Eigenvalues</div>
+    <h2 class="sec-title">3 equal masses &amp; a plane of principal axes</h2>
+    <p class="lede">Three equal point masses <span class="m"><i>m</i></span> sit at <span class="m">(<i>a</i>, 0, 0)</span>, <span class="m">(0, <i>a</i>, 2<i>a</i>)</span>, and <span class="m">(0, 2<i>a</i>, <i>a</i>)</span>. Because two eigenvalues are equal (<span class="m"><i>λ</i> = 10<i>ma</i><sup>2</sup>, 10<i>ma</i><sup>2</sup>, 2<i>ma</i><sup>2</sup></span>), the eigenvectors for <span class="m">10<i>ma</i><sup>2</sup></span> span an entire 2D plane: <span class="m">(<i>α</i>, 1, −1)</span> for any <span class="m"><i>α</i></span>!</p>
+  </div>
+
+  <div class="deriv" id="d-degen">
+    <div class="viz-head"><h3>Finding the principal moments &amp; plane of axes (Slides 24–27)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-degen" type="button">Back</button><button class="btn primary" data-deriv-next="d-degen" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="scrollx"><div class="eq big"><span class="m">[<i>I</i>] = <i>ma</i><sup>2</sup></span><span class="mat3 m"><span class="rv">10</span><span>0</span><span>0</span><span>0</span><span class="rv">6</span><span class="tv">−4</span><span>0</span><span class="tv">−4</span><span class="rv">6</span></span></div></div><div class="why"><span class="m"><i>I<sub>xx</sub></i> = <i>m</i>(0 + 5<i>a</i><sup>2</sup> + 5<i>a</i><sup>2</sup>) = 10<i>ma</i><sup>2</sup></span>; <span class="m"><i>I<sub>yy</sub></i> = <i>m</i>(<i>a</i><sup>2</sup> + 4<i>a</i><sup>2</sup> + <i>a</i><sup>2</sup>) = 6<i>ma</i><sup>2</sup></span>; <span class="m"><i>I<sub>yz</sub></i> = −<i>m</i>(0 + 2<i>a</i><sup>2</sup> + 2<i>a</i><sup>2</sup>) = −4<i>ma</i><sup>2</sup></span>.</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m">(10<i>ma</i><sup>2</sup> − <i>λ</i>)[(6<i>ma</i><sup>2</sup> − <i>λ</i>)<sup>2</sup> − 16<i>m</i><sup>2</sup><i>a</i><sup>4</sup>] = 0 &nbsp;⟹&nbsp; <span class="rv"><i>λ</i> = 10<i>ma</i><sup>2</sup>, 10<i>ma</i><sup>2</sup>, 2<i>ma</i><sup>2</sup></span></span></div><div class="why">Slide 24: <span class="m">(6 − <i>λ</i>)<sup>2</sup> = 16 ⟹ 6 − <i>λ</i> = ±4 ⟹ <i>λ</i> = 2<i>ma</i><sup>2</sup></span> or <span class="m">10<i>ma</i><sup>2</sup></span>. Thus <span class="m">10<i>ma</i><sup>2</sup></span> is a repeated root!</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m"><i>λ</i> = 10<i>ma</i><sup>2</sup>: &nbsp;−4<i>ω<sub>y</sub></i> − 4<i>ω<sub>z</sub></i> = 0 &nbsp;⟹&nbsp; <i>ω<sub>y</sub></i> = −<i>ω<sub>z</sub></i>,&nbsp; <i>ω<sub>x</sub></i> = <i>α</i> (free) &nbsp;⟹&nbsp; <span class="om">(<i>α</i>, 1, −1)</span></span></div><div class="why">Slides 25–26: any vector in the plane <span class="m"><i>y</i> + <i>z</i> = 0</span> is a principal axis! Choosing two orthogonal directions in this plane gives <span class="m">(1, 0, 0)</span> and <span class="m">(0, 1, −1)/√2</span>.</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq"><span class="m"><i>λ</i> = 2<i>ma</i><sup>2</sup>: &nbsp;8<i>ω<sub>x</sub></i> = 0,&nbsp; 4<i>ω<sub>y</sub></i> − 4<i>ω<sub>z</sub></i> = 0 &nbsp;⟹&nbsp; <span class="om">(0, 1, 1)/√2</span></span></div><div class="why">Slide 27: the third orthogonal principal axis is <span class="m">(0, 1, 1)/√2</span>, perpendicular to the degenerate plane, giving <span class="m"><i>D</i> = diag(10, 10, 2)<i>ma</i><sup>2</sup></span>.</div></div></li>
+    </ol>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Explore the degenerate principal plane (α, 1, −1)</h3>
+      <div class="btnrow">
+        <button class="btn" data-dg3="x" type="button">Axis 1: (1, 0, 0) [λ=10]</button>
+        <button class="btn" data-dg3="p2" aria-pressed="true" type="button">Axis 2: (0, 1, −1) [λ=10]</button>
+        <button class="btn" data-dg3="p3" type="button">Unique Axis 3: (0, 1, 1) [λ=2]</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-degen"></canvas><div class="hint">drag to orbit</div></div>
+    <div class="controls">
+      <div class="ctl"><label for="dg3-a">Free parameter α in (α, 1, −1) <span class="val" id="dg3-a-v">0.0</span></label><input type="range" id="dg3-a" min="-3" max="3" step="0.1" value="0"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Selected ω̂</div><div class="v om" id="dg3-w">(0.00, 0.71, −0.71)</div></div>
+      <div class="ro"><div class="k">L = [I]ω̂  (ma²ω)</div><div class="v lv" id="dg3-l">(0.00, 7.07, −7.07)</div></div>
+      <div class="ro"><div class="k">Ratio |L| / |ω|</div><div class="v rv" id="dg3-rat">10.00 ma²</div></div>
+      <div class="ro"><div class="k">Angle L ↔ ω</div><div class="v ok" id="dg3-ang">0.0° (Principal!)</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 5. CM ANGULAR MOMENTUM THEOREM (SLIDES 28-29) ===================== -->
+<section class="sec" id="s-cm" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Slides 28–29 · König's / CM Decomposition</div>
+    <h2 class="sec-title">Show that L<sub>z</sub> = I<sub>0</sub>ω + (R × MV)<sub>z</sub></h2>
+    <p class="lede">The total angular momentum of a translating and rotating rigid body separates cleanly into the orbital angular momentum of the center of mass <span class="m"><span class="vec rv">R</span> × <i>M</i><span class="vec vv">V</span></span> plus the spin angular momentum about the center of mass <span class="m"><i>I</i><sub>0</sub><span class="vec om">ω</span></span>.</p>
+  </div>
+
+  <div class="deriv" id="d-cm">
+    <div class="viz-head"><h3>Proof of L = R × MV + I<sub>0</sub>ω (Slides 28–29)</h3><div class="btnrow"><button class="btn" data-deriv-prev="d-cm" type="button">Back</button><button class="btn primary" data-deriv-next="d-cm" type="button">Next step</button></div></div>
+    <ol class="deriv-steps">
+      <li><div class="sn">01</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec rv">r</span><sub><i>i</i></sub> = <span class="vec rv">R</span> + <span class="vec rv">r</span><sub><i>i</i></sub>′,&nbsp;&nbsp; <span class="vec vv">v</span><sub><i>i</i></sub> = <span class="vec vv">V</span> + <span class="vec vv">v</span><sub><i>i</i></sub>′</span></div><div class="why">Slide 28: express each particle's lab position and velocity as CM motion (<span class="m"><span class="vec rv">R</span>, <span class="vec vv">V</span></span>) plus motion relative to the CM (<span class="m"><span class="vec rv">r</span><sub><i>i</i></sub>′, <span class="vec vv">v</span><sub><i>i</i></sub>′</span>).</div></div></li>
+      <li><div class="sn">02</div><div class="deriv-body"><div class="eq"><span class="m"><span class="vec lv">L</span> = ∑ (<span class="vec rv">R</span> + <span class="vec rv">r</span><sub><i>i</i></sub>′) × <i>m<sub>i</sub></i>(<span class="vec vv">V</span> + <span class="vec vv">v</span><sub><i>i</i></sub>′) = <span class="vec rv">R</span> × <i>M</i><span class="vec vv">V</span> + <span class="vec rv">R</span> × (∑ <i>m<sub>i</sub></i><span class="vec vv">v</span><sub><i>i</i></sub>′) + (∑ <i>m<sub>i</sub></i><span class="vec rv">r</span><sub><i>i</i></sub>′) × <span class="vec vv">V</span> + ∑ <span class="vec rv">r</span><sub><i>i</i></sub>′ × <i>m<sub>i</sub></i><span class="vec vv">v</span><sub><i>i</i></sub>′</span></div><div class="why">Slide 29: expand the cross product into four sums.</div></div></li>
+      <li><div class="sn">03</div><div class="deriv-body"><div class="eq"><span class="m">∑ <i>m<sub>i</sub></i><span class="vec rv">r</span><sub><i>i</i></sub>′ = 0 &nbsp;and&nbsp; ∑ <i>m<sub>i</sub></i><span class="vec vv">v</span><sub><i>i</i></sub>′ = 0</span></div><div class="why">Slide 29: because <span class="m"><span class="vec rv">r</span><sub><i>i</i></sub>′</span> is measured from the center of mass, both middle cross-terms vanish identically!</div></div></li>
+      <li><div class="sn">04</div><div class="deriv-body"><div class="eq big"><span class="m"><span class="vec lv">L</span> = <span class="vec rv">R</span> × <i>M</i><span class="vec vv">V</span> + <i>I</i><sub>0</sub><span class="vec om">ω</span> &nbsp;⟹&nbsp; <span class="lv"><i>L<sub>z</sub></i></span> = <span class="om"><i>I</i><sub>0</sub><i>ω</i></span> + (<span class="vec rv">R</span> × <i>M</i><span class="vec vv">V</span>)<sub><i>z</i></sub></span></div><div class="why">Slide 29: the remaining relative sum <span class="m">∑ <span class="vec rv">r</span><sub><i>i</i></sub>′ × <i>m<sub>i</sub></i><span class="vec vv">v</span><sub><i>i</i></sub>′ = <i>I</i><sub>0</sub><span class="vec om">ω</span></span> is the rotational angular momentum about the CM.</div></div></li>
+    </ol>
+  </div>
+
+  <div class="viz">
+    <div class="viz-head">
+      <h3>Interactive CM orbital + spin angular momentum</h3>
+      <div class="btnrow">
+        <button class="btn primary" id="cm-play" type="button">Pause</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="cv-cm"></canvas></div>
+    <div class="controls">
+      <div class="ctl"><label for="cm-v">CM Orbital Speed V <span class="val" id="cm-v-v">1.5 m/s</span></label><input type="range" id="cm-v" min="-3" max="3" step="0.25" value="1.5"></div>
+      <div class="ctl"><label for="cm-w">Spin about CM ω <span class="val" id="cm-w-v">3.0 rad/s</span></label><input type="range" id="cm-w" min="-6" max="6" step="0.5" value="3"></div>
+      <div class="ctl"><label for="cm-r">Orbit Radius |R| <span class="val" id="cm-r-v">2.0 m</span></label><input type="range" id="cm-r" min="0.8" max="2.6" step="0.2" value="2.0"></div>
+    </div>
+    <div class="readout">
+      <div class="ro"><div class="k">Orbital (R × MV)_z</div><div class="v rv" id="cm-lo">+6.00</div></div>
+      <div class="ro"><div class="k">Spin I₀ω</div><div class="v om" id="cm-ls">+3.00</div></div>
+      <div class="ro"><div class="k">Cross term ∑ m_i r_i′</div><div class="v">0.00 (exact)</div></div>
+      <div class="ro"><div class="k">Total L_z = I₀ω + (R×MV)_z</div><div class="v lv" id="cm-lt">+9.00</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 6. FORMULA SHEET ===================== -->
+<section class="sec" id="s-sheet" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Every equation in Lecture 22</div>
+    <h2 class="sec-title">Formula sheet</h2>
+    <p class="lede">Summary of key equations and worked problems from 22.pptx (Slides 1–29).</p>
+  </div>
+  <div class="sheet">
+    <div class="sheet-card"><div class="top"><h4>Discrete Inertia Tensor (Q1)</h4><button class="jump" data-goto="q1" type="button">section 01 →</button></div><div class="eq"><span class="m"><i>I<sub>xx</sub></i> = ∑<i>m<sub>i</sub></i>(<i>y<sub>i</sub></i><sup>2</sup>+<i>z<sub>i</sub></i><sup>2</sup>), &nbsp;<i>I<sub>xy</sub></i> = −∑<i>m<sub>i</sub>x<sub>i</sub>y<sub>i</sub></i></span></div><div class="cap">Slide 2: 3-mass assembly gives <span class="m"><span class="vec lv">L</span> = (0, −6, 42)</span> for <span class="m"><span class="vec om">ω</span> = (3, −2, 4)</span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Eigenvalue Condition</h4><button class="jump" data-goto="diag" type="button">section 02 →</button></div><div class="eq"><span class="m">([<i>I</i>] − <i>λ</i>[<b>1</b>])<span class="vec om">ω</span> = 0, &nbsp;det([<i>I</i>] − <i>λ</i>[<b>1</b>]) = 0</span></div><div class="cap">Slides 4–7: condition for <span class="m"><span class="vec lv">L</span> ∥ <span class="vec om">ω</span></span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Diagonalization Theorem</h4><button class="jump" data-goto="diag" type="button">section 02 →</button></div><div class="eq"><span class="m"><i>D</i> = diag(<i>λ</i><sub>1</sub>, <i>λ</i><sub>2</sub>, <i>λ</i><sub>3</sub>), &nbsp;<i>L<sub>k</sub></i> = <i>λ<sub>k</sub>ω<sub>k</sub></i></span></div><div class="cap">Slides 11–13: rotating coordinate axes onto eigenvectors makes <span class="m">[<i>I</i>]</span> diagonal.</div></div>
+    <div class="sheet-card"><div class="top"><h4>45° Rotating Dumbbell</h4><button class="jump" data-goto="dumbbell" type="button">section 03 →</button></div><div class="eq"><span class="m"><i>λ</i> = 4<i>mb</i><sup>2</sup>, 4<i>mb</i><sup>2</sup>, 0</span></div><div class="cap">Slides 14–22: <span class="m"><i>λ</i> = 0</span> along the rod <span class="m">(1,−1,0)</span>; <span class="m">4<i>mb</i><sup>2</sup></span> perpendicular to it.</div></div>
+    <div class="sheet-card"><div class="top"><h4>Degenerate 3-Mass System</h4><button class="jump" data-goto="degen" type="button">section 04 →</button></div><div class="eq"><span class="m"><i>λ</i> = 10<i>ma</i><sup>2</sup>, 10<i>ma</i><sup>2</sup>, 2<i>ma</i><sup>2</sup></span></div><div class="cap">Slides 23–27: any <span class="m">(<i>α</i>, 1, −1)</span> is a principal axis for <span class="m">10<i>ma</i><sup>2</sup></span>; <span class="m">(0, 1, 1)</span> for <span class="m">2<i>ma</i><sup>2</sup></span>.</div></div>
+    <div class="sheet-card"><div class="top"><h4>CM Angular Momentum</h4><button class="jump" data-goto="cm" type="button">section 05 →</button></div><div class="eq"><span class="m"><span class="vec lv">L</span> = <span class="vec rv">R</span> × <i>M</i><span class="vec vv">V</span> + <i>I</i><sub>0</sub><span class="vec om">ω</span></span></div><div class="cap">Slides 28–29: cross terms vanish because <span class="m">∑<i>m<sub>i</sub></i><span class="vec rv">r</span><sub><i>i</i></sub>′ = 0</span> and <span class="m">∑<i>m<sub>i</sub></i><span class="vec vv">v</span><sub><i>i</i></sub>′ = 0</span>.</div></div>
+  </div>
+</section>
+
+<!-- ===================== 7. QUIZ ===================== -->
+<section class="sec" id="s-quiz" hidden>
+  <div class="sec-head">
+    <div class="slide-tag">Self-check</div>
+    <h2 class="sec-title">Ten questions on Lecture 22</h2>
+    <p class="lede">Check your mastery of the 3-mass problems, rotating dumbbell principal axes, degenerate eigenspaces, and CM decomposition.</p>
+  </div>
+  <div id="quizlist" style="display:flex;flex-direction:column;gap:14px"></div>
+  <div class="score" id="score">0 answered</div>
+</section>
+
+</div>
+</main>
+</div>
+<script>
+(function(){
+"use strict";
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const unit=a=>{const L=len(a)||1;return mul(a,1/L)};
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const DEG=Math.PI/180;
+const fmt=(v,n)=>{const s=v.toFixed(n);return (Object.is(parseFloat(s),-0)||s==="-"+(0).toFixed(n))?(0).toFixed(n):s};
+function matVec(A,v){return [A[0][0]*v[0]+A[0][1]*v[1]+A[0][2]*v[2],A[1][0]*v[0]+A[1][1]*v[1]+A[1][2]*v[2],A[2][0]*v[0]+A[2][1]*v[1]+A[2][2]*v[2]]}
+
+/* ============ theme colours ============ */
+let CSS_CACHE={};
+function col(name){
+  if(!(name in CSS_CACHE)) CSS_CACHE[name]=getComputedStyle(document.documentElement).getPropertyValue('--'+name).trim()||'#888';
+  return CSS_CACHE[name];
+}
+function flushColours(){CSS_CACHE={};}
+try{ if(window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',flushColours);}catch(e){}
+new MutationObserver(flushColours).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ============ scene registry + 3D canvas ============ */
+const SCENES=[];
+const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function makeScene(section, canvasId, opt, renderFn){
+  const cv=document.getElementById(canvasId); if(!cv) return null;
+  const ctx=cv.getContext('2d');
+  const o=Object.assign({ratio:0.56,minH:260,maxH:430,yaw:36,pitch:22,dist:6.5,f:2.1,orbit:true,flat:false},opt);
+  const S={cv,ctx,section,yaw:o.yaw,pitch:o.pitch,dist:o.dist,f:o.f,W:600,H:340,t:0,playing:true,opt:o,data:{}};
+
+  function resize(){
+    const w=Math.max(220,cv.parentElement.clientWidth);
+    const h=clamp(Math.round(w*o.ratio),o.minH,o.maxH);
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+    cv.style.height=h+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    S.W=w;S.H=h;S.dirty=true;
+  }
+  S.resize=resize;
+  try{new ResizeObserver(resize).observe(cv.parentElement)}catch(e){window.addEventListener('resize',resize)}
+  resize();
+
+  if(o.orbit && !o.flat){
+    let dragging=false,lx=0,ly=0;
+    const down=e=>{dragging=true;const p=e.touches?e.touches[0]:e;lx=p.clientX;ly=p.clientY;cv.style.cursor='grabbing'};
+    const move=e=>{if(!dragging)return;const p=e.touches?e.touches[0]:e;
+      S.yaw-=(p.clientX-lx)*0.42;S.pitch=clamp(S.pitch+(p.clientY-ly)*0.35,-86,86);lx=p.clientX;ly=p.clientY;
+      if(e.cancelable&&e.touches)e.preventDefault();S.dirty=true};
+    const up=()=>{dragging=false;cv.style.cursor='grab'};
+    cv.style.cursor='grab';
+    cv.addEventListener('mousedown',down);window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+    cv.addEventListener('touchstart',down,{passive:true});cv.addEventListener('touchmove',move,{passive:false});
+    window.addEventListener('touchend',up);
+  }
+
+  S.basis=function(){
+    const pr=S.pitch*DEG, yw=S.yaw*DEG;
+    const ez=[Math.cos(pr)*Math.cos(yw),Math.cos(pr)*Math.sin(yw),Math.sin(pr)];
+    let ex=cross([0,0,1],ez); if(len(ex)<1e-6) ex=[1,0,0]; ex=unit(ex);
+    const ey=cross(ez,ex);
+    return {ex,ey,ez};
+  };
+  S.project=function(p,B){
+    B=B||S.basis();
+    const depth=S.dist-dot(p,B.ez);
+    const k=(S.f*Math.min(S.W,S.H*1.5)/2)/Math.max(depth,0.25);
+    return {x:S.cx+dot(p,B.ex)*k, y:S.cy-dot(p,B.ey)*k, d:depth, k:k};
+  };
+
+  const g={};
+  g.clear=()=>{ctx.clearRect(0,0,S.W,S.H)};
+  g.line=(A,B2,st)=>{st=st||{};ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x,B2.y);ctx.stroke();ctx.restore()};
+  g.path=(pts,st)=>{st=st||{};if(pts.length<2)return;ctx.save();ctx.strokeStyle=st.color||col('fg-3');ctx.lineWidth=st.w||1.4;
+    if(st.dash)ctx.setLineDash(st.dash);ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+    if(st.close)ctx.closePath(); if(st.fill){ctx.fillStyle=st.fill;ctx.fill()} if(st.color!=='none')ctx.stroke();ctx.restore()};
+  g.arrow=(A,B2,st)=>{st=st||{};const c=st.color||col('fg');const w=st.w||2.4;
+    const dx=B2.x-A.x,dy=B2.y-A.y,L=Math.hypot(dx,dy);if(L<0.5)return;
+    const hs=Math.max(7,Math.min(13,L*0.26)),ux=dx/L,uy=dy/L;
+    ctx.save();ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B2.x-ux*hs*0.75,B2.y-uy*hs*0.75);ctx.stroke();
+    ctx.fillStyle=c;ctx.beginPath();ctx.moveTo(B2.x,B2.y);
+    ctx.lineTo(B2.x-ux*hs+(-uy)*hs*0.40,B2.y-uy*hs+(ux)*hs*0.40);
+    ctx.lineTo(B2.x-ux*hs-(-uy)*hs*0.40,B2.y-uy*hs-(ux)*hs*0.40);
+    ctx.closePath();ctx.fill();ctx.restore()};
+  g.dot=(P,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg');ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    ctx.beginPath();ctx.arc(P.x,P.y,st.r||4,0,6.2832);ctx.fill();
+    if(st.ring){ctx.strokeStyle=st.ring;ctx.lineWidth=1.6;ctx.stroke()}ctx.restore()};
+  g.text=(P,s,st)=>{st=st||{};ctx.save();ctx.fillStyle=st.color||col('fg-2');
+    ctx.font=(st.italic?'italic ':'')+(st.weight||600)+' '+(st.size||12)+'px '+(st.mono?"ui-monospace,Menlo,Consolas,monospace":"'Spline Sans',system-ui,sans-serif");
+    ctx.textAlign=st.align||'center';ctx.textBaseline=st.base||'middle';ctx.globalAlpha=st.alpha==null?1:st.alpha;
+    if(st.halo){ctx.lineWidth=3.4;ctx.strokeStyle=col('surface');ctx.lineJoin='round';ctx.strokeText(s,P.x+(st.dx||0),P.y+(st.dy||0))}
+    ctx.fillText(s,P.x+(st.dx||0),P.y+(st.dy||0));ctx.restore()};
+  g.ring=(center,u,v,R,st,n,a0,a1)=>{
+    n=n||72;a0=a0==null?0:a0;a1=a1==null?Math.PI*2:a1;const B=S.basis();const pts=[];
+    for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;pts.push(S.project(add(center,add(mul(u,R*Math.cos(a)),mul(v,R*Math.sin(a)))),B))}
+    g.path(pts,st)};
+  S.g=g;
+
+  S.render=renderFn;
+  SCENES.push(S);
+  return S;
+}
+
+function drawAxes(S,opt){
+  const g=S.g,B=S.basis(),o=Object.assign({size:2.0,grid:true,labels:['x','y','z'],gridN:3,plane:'xy'},opt||{});
+  const O=S.project([0,0,0],B);
+  if(o.grid){
+    const n=o.gridN,st={color:col('line'),w:1,alpha:.85};
+    for(let i=-n;i<=n;i++){
+      const f=i/n*o.size;
+      if(o.plane==='xy'){g.line(S.project([f,-o.size,0],B),S.project([f,o.size,0],B),st);g.line(S.project([-o.size,f,0],B),S.project([o.size,f,0],B),st)}
+      else{g.line(S.project([f,0,-o.size],B),S.project([f,0,o.size],B),st);g.line(S.project([-o.size,0,f],B),S.project([o.size,0,f],B),st)}
+    }
+  }
+  const L=o.size*1.12, ax=[[L,0,0],[0,L,0],[0,0,L]];
+  for(let i=0;i<3;i++){
+    if(o.labels[i]===null) continue;
+    const P=S.project(ax[i],B);
+    g.line(O,P,{color:col('fg-3'),w:1.3,alpha:.95});
+    g.text(P,o.labels[i],{color:col('fg-3'),size:12.5,dx:9,dy:-7,italic:true,halo:true});
+  }
+  return B;
+}
+
+/* ============ navigation ============ */
+const SECTIONS=[
+  {id:'q1',       label:'3-Mass Tensor & L (Q1)'},
+  {id:'diag',     label:'Eigenvectors & Diagonalization'},
+  {id:'dumbbell', label:'45° Rotating Dumbbell'},
+  {id:'degen',    label:'Degenerate 3-Mass System'},
+  {id:'cm',       label:'CM Angular Momentum Theorem'},
+  {id:'sheet',    label:'Formula sheet'},
+  {id:'quiz',     label:'Self-check quiz'}
+];
+let current=SECTIONS[0].id;
+const navlist=document.getElementById('navlist'),tabscroll=document.getElementById('tabscroll');
+SECTIONS.forEach((s,i)=>{
+  const n=String(i+1).padStart(2,'0');
+  const li=document.createElement('li');
+  li.innerHTML='<button class="nav-link" type="button" data-goto="'+s.id+'"><span class="n">'+n+'</span><span>'+s.label+'</span></button>';
+  navlist.appendChild(li);
+  const b=document.createElement('button');
+  b.className='nav-link';b.type='button';b.dataset.goto=s.id;b.innerHTML='<span class="n">'+n+'</span><span>'+s.label+'</span>';
+  tabscroll.appendChild(b);
+});
+function show(id,push){
+  if(!SECTIONS.some(s=>s.id===id)) id=SECTIONS[0].id;
+  current=id;
+  SECTIONS.forEach(s=>{const el=document.getElementById('s-'+s.id); if(el) el.hidden = s.id!==id});
+  document.querySelectorAll('[data-goto]').forEach(b=>{if(b.classList.contains('nav-link'))b.setAttribute('aria-current',String(b.dataset.goto===id))});
+  if(push && location.hash.slice(1)!==id){try{location.hash=id}catch(e){}}
+  SCENES.forEach(S=>{if(S.section===id){S.resize();S.dirty=true}});
+  const act=tabscroll.querySelector('[data-goto="'+id+'"]'); if(act&&act.scrollIntoView) act.scrollIntoView({block:'nearest',inline:'center'});
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-goto]'); if(!b)return;
+  show(b.dataset.goto,true);
+  if(!b.classList.contains('nav-link')) window.scrollTo({top:0,behavior:reduceMotion?'auto':'smooth'});
+});
+window.addEventListener('hashchange',()=>show(location.hash.slice(1)||SECTIONS[0].id,false));
+
+/* ============ theme toggle ============ */
+const THEMES=['system','light','dark'];
+let ti=0;
+try{const st=localStorage.getItem('rbm22-theme'); if(st&&THEMES.indexOf(st)>=0) ti=THEMES.indexOf(st)}catch(e){}
+function applyTheme(){
+  const t=THEMES[ti];
+  if(t==='system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',t);
+  const lbl='Theme: '+t;
+  const a=document.getElementById('themeBtn'),b=document.getElementById('themeBtn2');
+  if(a)a.textContent=lbl; if(b)b.textContent=t==='system'?'Theme':t;
+  try{localStorage.setItem('rbm22-theme',t)}catch(e){}
+  flushColours();SCENES.forEach(S=>S.dirty=true);
+}
+['themeBtn','themeBtn2'].forEach(id=>{const el=document.getElementById(id);if(el)el.addEventListener('click',()=>{ti=(ti+1)%3;applyTheme()})});
+applyTheme();
+
+/* ============ derivation steppers ============ */
+document.querySelectorAll('.deriv').forEach(d=>{
+  const items=Array.from(d.querySelectorAll('.deriv-steps li'));
+  let n=1;
+  const paint=()=>{items.forEach((li,i)=>li.dataset.off=i<n?'0':'1');
+    const nx=d.querySelector('[data-deriv-next]'),pv=d.querySelector('[data-deriv-prev]');
+    if(nx){nx.textContent=n>=items.length?'All steps shown':'Next step';nx.disabled=n>=items.length;nx.style.opacity=n>=items.length?.5:1}
+    if(pv){pv.disabled=n<=1;pv.style.opacity=n<=1?.5:1}};
+  d.querySelector('[data-deriv-next]')?.addEventListener('click',()=>{n=Math.min(items.length,n+1);paint()});
+  d.querySelector('[data-deriv-prev]')?.addEventListener('click',()=>{n=Math.max(1,n-1);paint()});
+  paint();
+});
+
+function bind(id,fn,fmtFn){
+  const el=document.getElementById(id),out=document.getElementById(id+'-v');
+  if(!el) return ()=>0;
+  const upd=()=>{const v=parseFloat(el.value); if(out&&fmtFn) out.textContent=fmtFn(v); fn&&fn(v); SCENES.forEach(S=>S.dirty=true)};
+  el.addEventListener('input',upd); upd();
+  return ()=>parseFloat(el.value);
+}
+function toggleGroup(attr,cb){
+  const btns=Array.from(document.querySelectorAll('[data-'+attr+']'));
+  btns.forEach(b=>b.addEventListener('click',()=>{
+    btns.forEach(x=>x.setAttribute('aria-pressed',String(x===b)));
+    cb(b.dataset[attr]); SCENES.forEach(S=>S.dirty=true);
+  }));
+  const init=btns.find(b=>b.getAttribute('aria-pressed')==='true')||btns[0];
+  if(init){btns.forEach(x=>x.setAttribute('aria-pressed',String(x===init)));cb(init.dataset[attr])}
+}
+function playBtn(id,getState,setState){
+  const el=document.getElementById(id); if(!el) return;
+  const paint=()=>{el.textContent=getState()?'Pause':'Play'};
+  el.addEventListener('click',()=>{setState(!getState());paint()});paint();
+}
+const txt=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v};
+function rodrigues(p,n,a){const c=Math.cos(a),s=Math.sin(a);return add(add(mul(p,c),mul(cross(n,p),s)),mul(n,dot(n,p)*(1-c)))}
+function angBetween(a,b){return Math.acos(clamp(dot(unit(a),unit(b)),-1,1))/DEG}
+/* ===================================================================
+   01 — 3-MASS SYSTEM Q1 (SLIDES 2–3)
+   =================================================================== */
+(function(){
+  const masses=[{m:2,p:[1,-1,1],lbl:'2kg (1,−1,1)'},{m:1,p:[2,0,2],lbl:'1kg (2,0,2)'},{m:4,p:[-1,1,0],lbl:'4kg (−1,1,0)'}];
+  const I=[[12,6,-6],[6,16,2],[-6,2,16]];
+  let wx=3, wy=-2, wz=4, psi=0, running=!reduceMotion;
+  const S=makeScene('q1','cv-q1',{yaw:34,pitch:22,dist:8.0,f:2.0,ratio:0.56},function(dt){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.58;
+    const w=[wx,wy,wz], wm=len(w), n=unit(w);
+    if(running && wm>1e-3) psi+=dt*0.85;
+    g.clear();
+    const B=drawAxes(this,{size:2.4,gridN:4});
+    const O=this.project([0,0,0],B);
+    const rPts=masses.map(o=>({m:o.m,lbl:o.lbl,p:wm>1e-3?rodrigues(o.p,n,psi):o.p}));
+    // rods from origin and between masses
+    rPts.forEach(o=>{g.line(O,this.project(o.p,B),{color:col('fg-3'),w:1.8,alpha:0.75})});
+    g.line(this.project(rPts[0].p,B),this.project(rPts[1].p,B),{color:col('line'),w:1.2,dash:[3,3]});
+    g.line(this.project(rPts[1].p,B),this.project(rPts[2].p,B),{color:col('line'),w:1.2,dash:[3,3]});
+    g.line(this.project(rPts[2].p,B),this.project(rPts[0].p,B),{color:col('line'),w:1.2,dash:[3,3]});
+    rPts.forEach(o=>{
+      const P=this.project(o.p,B);
+      g.dot(P,{r:4+o.m*1.6,color:col('rvec'),ring:col('surface')});
+      g.text(P,o.m+'kg',{size:11,color:col('rvec'),dy:-14,halo:true});
+    });
+    const L=matVec(I,w), Lm=len(L);
+    if(wm>1e-3){
+      const wu=mul(n,2.1);
+      g.arrow(O,this.project(wu,B),{color:col('omega'),w:3.2});
+      g.text(this.project(mul(wu,1.12),B),'ω',{size:15,color:col('omega'),halo:true});
+    }
+    if(Lm>1e-3){
+      const lu=mul(unit(L),2.3);
+      g.arrow(O,this.project(lu,B),{color:col('lvec'),w:3.4});
+      g.text(this.project(mul(lu,1.12),B),'L = [I]ω',{size:13,color:col('lvec'),halo:true});
+    }
+    g.dot(O,{r:4,color:col('fg')});
+    const ang=(wm>1e-3&&Lm>1e-3)?angBetween(L,w):0;
+    txt('q1-w','('+fmt(wx,1)+', '+fmt(wy,1)+', '+fmt(wz,1)+')');
+    txt('q1-l','('+fmt(L[0],1)+', '+fmt(L[1],1)+', '+fmt(L[2],1)+')');
+    txt('q1-lm',fmt(Lm,2));
+    txt('q1-ang',fmt(ang,1)+'°');
+  });
+  if(!S) return;
+  bind('q1-wx',v=>wx=v,v=>fmt(v,1));
+  bind('q1-wy',v=>wy=v,v=>fmt(v,1));
+  bind('q1-wz',v=>wz=v,v=>fmt(v,1));
+  document.getElementById('q1-preset').addEventListener('click',()=>{
+    psi=0;
+    [['q1-wx',3],['q1-wy',-2],['q1-wz',4]].forEach(([id,v])=>{const e=document.getElementById(id);e.value=String(v);e.dispatchEvent(new Event('input'))});
+  });
+  playBtn('q1-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   02 — DIAGONALIZATION (SLIDES 4–13)
+   =================================================================== */
+(function(){
+  let ang=20, frameAng=0;
+  const slA=document.getElementById('dg-ang'), slF=document.getElementById('dg-frame'), rb=document.getElementById('dg-rot');
+  const S=makeScene('diag','cv-diag',{flat:true,orbit:false,ratio:0.48,minH:250,maxH:340},function(){
+    const g=this.g,W=this.W,H=this.H,ctx=this.ctx;
+    g.clear();
+    const cx=W*0.33, cy=H*0.52, R=Math.min(W*0.27,H*0.42), sc=R/3.2;
+    const sp=(v,k)=>({x:cx+v[0]*k,y:cy-v[1]*k});
+    // lab axes faint
+    g.line(sp([-1,0],R),sp([1,0],R),{color:col('line'),w:1});
+    g.line(sp([0,-1],R),sp([0,1],R),{color:col('line'),w:1});
+    // eigenvector lines (45 deg and 135 deg)
+    [[45,'e₁ (λ₁=1)'],[135,'e₂ (λ₂=3)']].forEach(([t,lab])=>{
+      const v=[Math.cos(t*DEG),Math.sin(t*DEG)];
+      g.line(sp(v,-R),sp(v,R),{color:col('rvec'),w:1.3,dash:[5,4],alpha:0.8});
+      g.text(sp(v,R*0.92),lab,{size:11,color:col('rvec'),halo:true,dy:-9});
+    });
+    // rotated coordinate axes (x', y')
+    const fa=frameAng*DEG, ax=[Math.cos(fa),Math.sin(fa)], ay=[-Math.sin(fa),Math.cos(fa)];
+    g.arrow(sp(ax,-R*0.85),sp(ax,R*1.04),{color:frameAng>44?col('ok'):col('fg-2'),w:2.0});
+    g.text(sp(ax,R*1.13),frameAng>0?"x′":'x',{italic:true,color:frameAng>44?col('ok'):col('fg-2'),halo:true});
+    g.arrow(sp(ay,-R*0.85),sp(ay,R*1.04),{color:frameAng>44?col('ok'):col('fg-2'),w:2.0});
+    g.text(sp(ay,R*1.13),frameAng>0?"y′":'y',{italic:true,color:frameAng>44?col('ok'):col('fg-2'),halo:true});
+    // ω and L=[2,-1;-1,2]ω
+    const w=[Math.cos(ang*DEG),Math.sin(ang*DEG)], L=[2*w[0]-w[1],-w[0]+2*w[1]];
+    const O={x:cx,y:cy};
+    g.arrow(O,sp(w,sc*1.3),{color:col('omega'),w:3});
+    g.text(sp(w,sc*1.3+15),'ω',{size:15,color:col('omega'),halo:true});
+    g.arrow(O,sp(L,sc*0.95),{color:col('lvec'),w:3.4});
+    g.text(sp(L,sc*0.95+18),'L = [I]ω',{size:13,color:col('lvec'),halo:true});
+    g.dot(O,{r:4,color:col('fg')});
+    // transformed matrix R^T I R for rotation angle fa
+    const c2=Math.cos(2*fa), s2=Math.sin(2*fa);
+    const I11=2-s2, I22=2+s2, I12=-c2;
+    const mx=W*0.70, my=H*0.34;
+    g.text({x:mx+38,y:my-32},frameAng===45?'DIAGONALIZED D (in x′, y′)':'TENSOR IN ROTATED FRAME ('+Math.round(frameAng)+'°)',{size:10.5,color:col('fg-3')});
+    const cells=[[fmt(I11,2),fmt(I12,2)],[fmt(I12,2),fmt(I22,2)]];
+    for(let r=0;r<2;r++)for(let k=0;k<2;k++){
+      const xP=mx+k*76,yP=my+r*46,off=r!==k,zero=off&&Math.abs(I12)<0.01;
+      ctx.save();ctx.fillStyle=off?(zero?col('surface-2'):'color-mix(in srgb, '+col('tau')+' 14%, transparent)'):'color-mix(in srgb, '+col('rvec')+' 14%, transparent)';
+      ctx.strokeStyle=off?(zero?col('line'):col('tau')):col('rvec');ctx.lineWidth=1.4;ctx.beginPath();ctx.rect(xP-32,yP-17,64,34);ctx.fill();ctx.stroke();ctx.restore();
+      g.text({x:xP,y:yP},cells[r][k],{size:13,mono:true,color:off?(zero?col('fg-3'):col('tau')):col('rvec')});
+    }
+    const aLW=Math.abs(Math.atan2(w[0]*L[1]-w[1]*L[0],w[0]*L[0]+w[1]*L[1]))/DEG;
+    const aa=Math.min(aLW,180-aLW), par=aa<0.6;
+    g.text({x:mx+38,y:my+106},par?'✓ L ∥ ω — Principal Axis!':'L tilted '+fmt(aa,1)+'° from ω',{size:12.5,color:par?col('ok'):col('tau'),weight:600});
+    txt('dg-mat','[['+cells[0][0]+', '+cells[0][1]+'], ['+cells[1][0]+', '+cells[1][1]+']]');
+    txt('dg-angLW',fmt(aa,1)+'°'+(par?' (parallel!)':''));
+  });
+  if(!S) return;
+  const setA=v=>{slA.value=String(v);slA.dispatchEvent(new Event('input'))};
+  const setF=v=>{slF.value=String(v);slF.dispatchEvent(new Event('input'));rb.setAttribute('aria-pressed',String(v===45))};
+  bind('dg-ang',v=>ang=v,v=>Math.round(v)+'°');
+  bind('dg-frame',v=>frameAng=v,v=>Math.round(v)+'°');
+  document.getElementById('dg-e1').addEventListener('click',()=>setA(45));
+  document.getElementById('dg-e2').addEventListener('click',()=>setA(135));
+  rb.addEventListener('click',()=>setF(frameAng<45?45:0));
+})();
+
+/* ===================================================================
+   03 — 45° ROTATING DUMBBELL (SLIDES 14–22)
+   =================================================================== */
+(function(){
+  const I=[[2,2,0],[2,2,0],[0,0,4]]; // in units of m b^2
+  let mode='e1', psi=0, running=!reduceMotion;
+  const S=makeScene('dumbbell','cv-dumbbell',{yaw:32,pitch:24,dist:7.2,f:2.1,ratio:0.54},function(dt){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.56;
+    const dirs={e1:[1,1,0],e2:[0,0,1],e3:[1,-1,0],x:[1,0,0]};
+    const n=unit(dirs[mode]||[1,1,0]);
+    if(running) psi+=dt*1.1;
+    g.clear();
+    const B=drawAxes(this,{size:2.0,gridN:4});
+    const O=this.project([0,0,0],B);
+    // principal axes in xy plane dashed
+    g.line(this.project([-1.8,-1.8,0],B),this.project([1.8,1.8,0],B),{color:col('rvec'),w:1.1,dash:[4,4],alpha:0.6});
+    g.line(this.project([-1.8,1.8,0],B),this.project([1.8,-1.8,0],B),{color:col('rvec'),w:1.1,dash:[4,4],alpha:0.6});
+    // two masses at (-1.2, 1.2, 0) and (1.2, -1.2, 0) rotated by psi around n
+    const p10=[-1.25,1.25,0], p20=[1.25,-1.25,0];
+    const p1=rodrigues(p10,n,psi), p2=rodrigues(p20,n,psi);
+    const P1=this.project(p1,B), P2=this.project(p2,B);
+    g.line(P1,P2,{color:col('fg-2'),w:2.8});
+    g.dot(P1,{r:8.5,color:col('rvec'),ring:col('surface')});
+    g.dot(P2,{r:8.5,color:col('rvec'),ring:col('surface')});
+    g.text(P1,'m',{size:11,color:col('surface'),weight:700});
+    g.text(P2,'m',{size:11,color:col('surface'),weight:700});
+    // L in initial frame for display
+    const L=matVec(I,n), Lm=len(L);
+    g.arrow(O,this.project(mul(n,2.1),B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(n,2.32),B),'ω',{size:15,color:col('omega'),halo:true});
+    if(Lm>1e-3){
+      const Lu=mul(unit(L),1.9);
+      g.arrow(O,this.project(Lu,B),{color:col('lvec'),w:3.4});
+      g.text(this.project(mul(Lu,1.15),B),'L',{size:14,color:col('lvec'),halo:true});
+    }
+    g.dot(O,{r:4,color:col('fg')});
+    txt('db-w','('+n.map(v=>fmt(v,2)).join(', ')+')');
+    txt('db-l','('+L.map(v=>fmt(v,2)).join(', ')+')');
+    if(mode==='e3'){txt('db-eig','0 (rod axis)');txt('db-par','YES — L = 0 ∥ ω');}
+    else if(mode==='x'){txt('db-eig','Not an eigenvector');txt('db-par','NO — L tilted 45° from ω');}
+    else{txt('db-eig','4 mb²');txt('db-par','YES — Principal axis (L = 4mb²ω)');}
+  });
+  if(!S) return;
+  toggleGroup('dbw',v=>{mode=v;psi=0});
+  playBtn('db-play',()=>running,v=>running=v);
+})();
+/* ===================================================================
+   04 — DEGENERATE 3-MASS SYSTEM (SLIDES 23–27)
+   =================================================================== */
+(function(){
+  const I=[[10,0,0],[0,6,-4],[0,-4,6]];
+  const pts=[[1,0,0],[0,1,2],[0,2,1]];
+  let mode='p2', alpha=0;
+  const slA=document.getElementById('dg3-a');
+  const S=makeScene('degen','cv-degen',{yaw:36,pitch:22,dist:7.8,f:2.0,ratio:0.55},function(){
+    const g=this.g; this.cx=this.W/2; this.cy=this.H*0.58;
+    g.clear();
+    const B=drawAxes(this,{size:2.3,gridN:4});
+    const O=this.project([0,0,0],B);
+    // draw the degenerate plane y + z = 0 spanned by (1,0,0) and (0,1,-1)
+    const c1=[-1.8,-1.3,1.3], c2=[1.8,-1.3,1.3], c3=[1.8,1.3,-1.3], c4=[-1.8,1.3,-1.3];
+    g.path([c1,c2,c3,c4].map(p=>this.project(p,B)),{close:true,fill:'color-mix(in srgb, '+col('omega')+' 14%, transparent)',color:col('omega'),w:1,dash:[4,4]});
+    // draw unique 3rd principal axis (0,1,1)
+    g.line(this.project([0,-1.6,-1.6],B),this.project([0,1.6,1.6],B),{color:col('rvec'),w:1.5,dash:[4,3]});
+    g.text(this.project([0,1.75,1.75],B),'e₃ (0,1,1) [λ=2]',{size:11,color:col('rvec'),halo:true});
+    // draw 3 equal masses
+    pts.forEach((p,idx)=>{
+      const P=this.project(p,B);
+      g.line(O,P,{color:col('fg-3'),w:1.6,alpha:0.75});
+      g.dot(P,{r:7.5,color:col('rvec'),ring:col('surface')});
+      g.text(P,'m'+(idx+1),{size:10.5,color:col('rvec'),dy:-13,halo:true});
+    });
+    // current omega direction
+    let raw = mode==='x'?[1,0,0]:mode==='p3'?[0,1,1]:[alpha,1,-1];
+    const w=unit(raw), L=matVec(I,w), Lm=len(L);
+    g.arrow(O,this.project(mul(w,2.1),B),{color:col('omega'),w:3.2});
+    g.text(this.project(mul(w,2.32),B),'ω̂',{size:15,color:col('omega'),halo:true});
+    const Lu=mul(unit(L),1.85);
+    g.arrow(O,this.project(Lu,B),{color:col('lvec'),w:3.2,dash:[3,3]});
+    g.text(this.project(mul(Lu,1.15),B),'L = '+fmt(Lm,0)+' ma²ω̂',{size:12.5,color:col('lvec'),halo:true});
+    g.dot(O,{r:4,color:col('fg')});
+    const ang=angBetween(L,w);
+    txt('dg3-w','('+w.map(v=>fmt(v,2)).join(', ')+')');
+    txt('dg3-l','('+L.map(v=>fmt(v,2)).join(', ')+')');
+    txt('dg3-rat',fmt(Lm,2)+' ma²');
+    txt('dg3-ang',fmt(ang,1)+'° (Principal!)');
+  });
+  if(!S) return;
+  bind('dg3-a',v=>{alpha=v;mode='p2'},v=>fmt(v,1));
+  toggleGroup('dg3',v=>{
+    mode=v;
+    if(v==='p2'&&slA){slA.value='0';alpha=0;txt('dg3-a-v','0.0');}
+  });
+})();
+
+/* ===================================================================
+   05 — CM ANGULAR MOMENTUM THEOREM (SLIDES 28–29)
+   =================================================================== */
+(function(){
+  let V=1.5, w=3.0, R=2.0, t=0, running=!reduceMotion;
+  const M=2.0, I0=1.0;
+  const S=makeScene('cm','cv-cm',{flat:true,orbit:false,ratio:0.46,minH:240,maxH:330},function(dt){
+    const g=this.g,W=this.W,H=this.H,ctx=this.ctx;
+    if(running) t+=dt;
+    g.clear();
+    const ox=W*0.36, oy=H*0.54, sc=Math.min(W*0.24,H*0.38)/2.4;
+    // axes at lab origin O
+    g.arrow({x:ox-sc*2.6,y:oy},{x:ox+sc*2.6,y:oy},{color:col('line'),w:1.3});
+    g.arrow({x:ox,y:oy+sc*2.3},{x:ox,y:oy-sc*2.3},{color:col('line'),w:1.3});
+    g.dot({x:ox,y:oy},{r:4,color:col('fg')});
+    g.text({x:ox-12,y:oy+14},'O',{size:12,color:col('fg-2')});
+    // orbit circle of CM
+    ctx.save();ctx.strokeStyle=col('line');ctx.setLineDash([4,4]);ctx.beginPath();ctx.arc(ox,oy,R*sc,0,6.2832);ctx.stroke();ctx.restore();
+    const phi = (V/(R||1))*t*0.65;
+    const rx=R*Math.cos(phi), ry=R*Math.sin(phi);
+    const cm={x:ox+rx*sc, y:oy-ry*sc};
+    // R vector from O to CM
+    g.arrow({x:ox,y:oy},cm,{color:col('rvec'),w:2.6});
+    g.text({x:(ox+cm.x)/2-10,y:(oy+cm.y)/2-10},'R',{size:13,color:col('rvec'),halo:true});
+    // V vector tangent to orbit at CM
+    const vx=-Math.sin(phi)*V, vy=Math.cos(phi)*V;
+    g.arrow(cm,{x:cm.x+vx*sc*0.55,y:cm.y-vy*sc*0.55},{color:col('vvec'),w:2.6});
+    g.text({x:cm.x+vx*sc*0.65,y:cm.y-vy*sc*0.65},'V',{size:13,color:col('vvec'),halo:true});
+    // rotating rigid body (dumbbell of half-length b=0.65) around CM
+    const th = w*t*0.7, bL=0.65*sc;
+    const p1={x:cm.x+bL*Math.cos(th), y:cm.y-bL*Math.sin(th)};
+    const p2={x:cm.x-bL*Math.cos(th), y:cm.y+bL*Math.sin(th)};
+    g.line(p1,p2,{color:col('fg-2'),w:3});
+    g.arrow(cm,p1,{color:col('omega'),w:2.2});
+    g.text({x:p1.x+12,y:p1.y-10},"r₁′",{size:11.5,color:col('omega'),halo:true});
+    g.dot(p1,{r:6.5,color:col('omega'),ring:col('surface')});
+    g.dot(p2,{r:6.5,color:col('omega'),ring:col('surface')});
+    g.dot(cm,{r:4.5,color:col('rvec')});
+    g.text({x:cm.x+14,y:cm.y+14},'CM',{size:11,color:col('rvec'),halo:true});
+    // Bar chart comparison on the right
+    const Lorb = R*M*V, Lspin = I0*w, Ltot = Lorb + Lspin;
+    const bx=W*0.78, by=H*0.54, bsc=Math.min(H*0.36,95)/18;
+    g.line({x:bx-85,y:by},{x:bx+85,y:by},{color:col('line'),w:1.3});
+    const bars=[
+      {x:bx-56,v:Lorb,c:col('rvec'),lbl:'(R×MV)z'},
+      {x:bx,   v:Lspin,c:col('omega'),lbl:'I₀ω'},
+      {x:bx+56,v:Ltot,c:col('lvec'),lbl:'Total Lz'}
+    ];
+    bars.forEach(b=>{
+      const h=clamp(b.v,-18,18)*bsc;
+      ctx.save();ctx.fillStyle=b.c;ctx.globalAlpha=0.85;
+      ctx.fillRect(b.x-16, h>=0?by-h:by, 32, Math.abs(h)||2);
+      ctx.restore();
+      g.text({x:b.x,y:by+(h>=0?16:-16)},b.lbl,{size:11,color:col('fg-2')});
+      g.text({x:b.x,y:by-h+(h>=0?-11:11)},fmt(b.v,1),{size:11,mono:true,color:b.c,halo:true});
+    });
+    txt('cm-lo',(Lorb>=0?'+':'')+fmt(Lorb,2));
+    txt('cm-ls',(Lspin>=0?'+':'')+fmt(Lspin,2));
+    txt('cm-lt',(Ltot>=0?'+':'')+fmt(Ltot,2));
+  });
+  if(!S) return;
+  bind('cm-v',v=>V=v,v=>fmt(v,2)+' m/s');
+  bind('cm-w',v=>w=v,v=>fmt(v,1)+' rad/s');
+  bind('cm-r',v=>R=v,v=>fmt(v,1)+' m');
+  playBtn('cm-play',()=>running,v=>running=v);
+})();
+
+/* ===================================================================
+   07 — QUIZ (10 QUESTIONS ON LECTURE 22)
+   =================================================================== */
+(function(){
+  const Q=[
+  {q:'In Q1 (Slide 2), masses 2 kg at (1,−1,1), 1 kg at (2,0,2), and 4 kg at (−1,1,0) have what diagonal moments <span class="m">(<i>I<sub>xx</sub>, I<sub>yy</sub>, I<sub>zz</sub></i>)</span>?',
+   o:['(12, 16, 16) kg·m²','(16, 12, 16) kg·m²','(10, 14, 14) kg·m²','(6, 6, 12) kg·m²'],a:0,
+   e:'<span class="m"><i>I<sub>xx</sub></i> = 2(1+1)+1(0+4)+4(1+0) = 12</span>; <span class="m"><i>I<sub>yy</sub></i> = 2(2)+1(8)+4(1) = 16</span>; <span class="m"><i>I<sub>zz</sub></i> = 2(2)+1(4)+4(2) = 16</span>.'},
+  {q:'For the same 3-mass system in Q1 rotating with <span class="m"><span class="vec om">ω</span> = 3<span class="hatv">i</span> − 2<span class="hatv">j</span> + 4<span class="hatv">k</span></span>, what is the angular momentum <span class="m"><span class="vec lv">L</span> = [<i>I</i>]<span class="vec om">ω</span></span>?',
+   o:['(0, −6, 42) kg·m²/s','(36, −32, 64) kg·m²/s','(12, −16, 32) kg·m²/s','(6, 0, 42) kg·m²/s'],a:0,
+   e:'Multiplying <span class="m">[[12,6,−6],[6,16,2],[−6,2,16]]</span> by <span class="m">(3,−2,4)<sup>T</sup></span> gives <span class="m">L<sub>x</sub>=36−12−24=0, L<sub>y</sub>=18−32+8=−6, L<sub>z</sub>=−18−4+64=42</span>.'},
+  {q:'What does the Diagonalization Theorem (Slides 11–13) accomplish physically for a rigid body?',
+   o:['It rotates the coordinate axes to align with the eigenvectors so [I] becomes diagonal with eigenvalues on the diagonal','It makes the angular velocity zero','It shifts the origin to the center of mass','It makes all three eigenvalues equal'],a:0,
+   e:'Aligning the coordinate axes with the eigenvectors eliminates all products of inertia, leaving <span class="m"><i>D</i> = diag(<i>λ</i><sub>1</sub>, <i>λ</i><sub>2</sub>, <i>λ</i><sub>3</sub>)</span>.'},
+  {q:'For the 45° dumbbell of two masses <span class="m"><i>m</i></span> at <span class="m">(∓√2<i>b</i>, ±√2<i>b</i>, 0)</span> (Slide 16), what is the inertia matrix <span class="m">[<i>I</i>]</span>?',
+   o:['2mb² [[1, 1, 0], [1, 1, 0], [0, 0, 2]]','2mb² [[1, −1, 0], [−1, 1, 0], [0, 0, 2]]','4mb² [[1, 0, 0], [0, 1, 0], [0, 0, 1]]','mb² [[2, 0, 0], [0, 2, 0], [0, 0, 4]]'],a:0,
+   e:'On Slide 16 each mass sits at <span class="m"><i>x<sub>i</sub>y<sub>i</sub></i> = −<i>b</i>²</span>, giving <span class="m"><i>I<sub>xx</sub></i> = <i>I<sub>yy</sub></i> = <i>I<sub>xy</sub></i> = 2<i>mb</i>², <i>I<sub>zz</sub></i> = 4<i>mb</i>²</span>.'},
+  {q:'What are the three principal moments (eigenvalues) of the dumbbell on Slides 18–19?',
+   o:['4mb², 4mb², 0','2mb², 2mb², 4mb²','4mb², 2mb², 0','2mb², 2mb², 0'],a:0,
+   e:'Solving <span class="m">(4<i>mb</i>² − <i>λ</i>)[(2<i>mb</i>² − <i>λ</i>)² − 4<i>m</i>²<i>b</i>⁴] = 0</span> yields <span class="m"><i>λ</i> = 4<i>mb</i>², 4<i>mb</i>², 0</span>.'},
+  {q:'Why is one eigenvalue equal to zero (<span class="m"><i>λ</i><sub>3</sub> = 0</span>) for the rotating dumbbell (Slide 21)?',
+   o:['Because the corresponding eigenvector (1, −1, 0) points right along the massless rod connecting the point masses','Because the total mass is zero','Because the dumbbell is at rest','Because the z-axis has no inertia'],a:0,
+   e:'Point masses lying directly on the rotation axis have zero perpendicular lever arm, so the moment of inertia about that axis is zero.'},
+  {q:'For three equal masses <span class="m"><i>m</i></span> at <span class="m">(<i>a</i>,0,0), (0,<i>a</i>,2<i>a</i>), (0,2<i>a</i>,<i>a</i>)</span> (Slides 23–24), what is the inertia matrix <span class="m">[<i>I</i>]</span>?',
+   o:['ma² [[10, 0, 0], [0, 6, −4], [0, −4, 6]]','ma² [[10, −4, 0], [−4, 6, 0], [0, 0, 6]]','ma² [[6, 0, 0], [0, 10, −4], [0, −4, 10]]','ma² [[10, 0, 0], [0, 6, 4], [0, 4, 6]]'],a:0,
+   e:'<span class="m"><i>I<sub>xx</sub></i> = <i>m</i>(0 + 5<i>a</i>² + 5<i>a</i>²) = 10<i>ma</i>²</span>, <span class="m"><i>I<sub>yy</sub></i> = <i>I<sub>zz</sub></i> = 6<i>ma</i>²</span>, and <span class="m"><i>I<sub>yz</sub></i> = −<i>m</i>(0 + 2<i>a</i>² + 2<i>a</i>²) = −4<i>ma</i>²</span>.'},
+  {q:'What are the principal moments of inertia for the 3-mass system on Slide 24?',
+   o:['10ma², 10ma², 2ma²','10ma², 6ma², 2ma²','10ma², 8ma², 4ma²','6ma², 6ma², 10ma²'],a:0,
+   e:'From <span class="m">(10<i>ma</i>² − <i>λ</i>)[(6<i>ma</i>² − <i>λ</i>)² − 16<i>m</i>²<i>a</i>⁴] = 0</span>, the roots are <span class="m">10<i>ma</i>², 10<i>ma</i>², 2<i>ma</i>²</span>.'},
+  {q:'Because <span class="m"><i>λ</i> = 10<i>ma</i>²</span> is a repeated eigenvalue (Slides 25–26), what are its eigenvectors?',
+   o:['Any non-zero vector of the form (α, 1, −1), forming a 2D plane of principal axes','Only the x-axis (1, 0, 0)','Only (0, 1, 1)','No eigenvectors exist'],a:0,
+   e:'Substituting <span class="m"><i>λ</i> = 10<i>ma</i>²</span> gives <span class="m"><i>ω<sub>y</sub></i> = −<i>ω<sub>z</sub></i></span> with <span class="m"><i>ω<sub>x</sub></i> = <i>α</i></span> arbitrary, e.g. orthogonal choices <span class="m">(1,0,0)</span> and <span class="m">(0,1,−1)</span>.'},
+  {q:'In the proof of <span class="m"><span class="vec lv">L</span> = <span class="vec rv">R</span> × <i>M</i><span class="vec vv">V</span> + <i>I</i><sub>0</sub><span class="vec om">ω</span></span> (Slides 28–29), why do the cross terms <span class="m">∑(<span class="vec rv">R</span> × <i>m<sub>i</sub></i><span class="vec vv">v</span><sub><i>i</i></sub>′)</span> and <span class="m">∑(<i>m<sub>i</sub></i><span class="vec rv">r</span><sub><i>i</i></sub>′) × <span class="vec vv">V</span></span> vanish?',
+   o:['Because r_i′ and v_i′ are measured relative to the center of mass, so ∑ m_i r_i′ = 0 and ∑ m_i v_i′ = 0','Because V = 0 for a rigid body','Because R is parallel to V','Because the total mass M is constant'],a:0,
+   e:'By definition of the center of mass, the mass-weighted sum of relative positions <span class="m">∑<i>m<sub>i</sub></i><span class="vec rv">r</span><sub><i>i</i></sub>′ = 0</span> and relative velocities <span class="m">∑<i>m<sub>i</sub></i><span class="vec vv">v</span><sub><i>i</i></sub>′ = 0</span>.'}
+  ];
+  const list=document.getElementById('quizlist'); if(!list) return;
+  let answered=0,right=0;
+  const LT='ABCD';
+  Q.forEach((q,i)=>{
+    const el=document.createElement('div');el.className='q';
+    el.innerHTML='<div class="qh"><span class="qn">'+String(i+1).padStart(2,'0')+'</span><span class="qt">'+q.q+'</span></div>'+
+      '<div class="opts"></div><div class="expl" hidden></div>';
+    const opts=el.querySelector('.opts'), expl=el.querySelector('.expl');
+    expl.innerHTML=q.e;
+    const order=q.o.map((text,k)=>({text,k}));
+    for(let j=order.length-1;j>0;j--){const k=(i*7+j*13)%(j+1);const tmp=order[j];order[j]=order[k];order[k]=tmp}
+    order.forEach((o,j)=>{
+      const b=document.createElement('button');b.className='opt';b.type='button';
+      b.innerHTML='<span class="mk">'+LT[j]+'</span><span>'+o.text+'</span>';
+      b.addEventListener('click',()=>{
+        if(el.dataset.done) return; el.dataset.done='1';
+        const correct=o.k===q.a; answered++; if(correct) right++;
+        Array.from(opts.children).forEach((c,ci)=>{
+          c.disabled=true;
+          if(order[ci].k===q.a) c.dataset.state='right';
+          else if(c===b) c.dataset.state='wrong';
+        });
+        expl.hidden=false;
+        const s=document.getElementById('score');
+        if(s) s.textContent=right+' / '+answered+' correct'+(answered===Q.length?'  ·  all done':'');
+      });
+      opts.appendChild(b);
+    });
+    list.appendChild(el);
+  });
+  const s=document.getElementById('score'); if(s) s.textContent='0 of '+Q.length+' answered';
+})();
+
+/* ===================================================================
+   MAIN LOOP
+   =================================================================== */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.05,(now-last)/1000); last=now;
+  for(let i=0;i<SCENES.length;i++){
+    const S=SCENES[i];
+    if(S.section!==current) continue;
+    if(S.cx==null){S.cx=S.W/2;S.cy=S.H/2}
+    try{S.render.call(S,dt)}catch(e){ if(!S._err){console.error('scene',S.cv.id,e);S._err=1} }
+  }
+  requestAnimationFrame(frame);
+}
+show(location.hash.slice(1)||SECTIONS[0].id,false);
+requestAnimationFrame(frame);
+window.addEventListener('load',()=>{SCENES.forEach(S=>S.resize())});
+})();
+</script>
+</body>
+</html>
